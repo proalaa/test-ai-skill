@@ -176,6 +176,15 @@ body {
   text-align: right;
 }
 
+.load-problem {
+  margin: 0 1.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c9372c;
+  border-radius: 6px;
+  color: #c9372c;
+  font-size: 0.875rem;
+}
+
 .link-button {
   border: none;
   background: none;

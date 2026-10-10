@@ -62,7 +62,7 @@ async function attachLabel(user: User, name: string) {
 
 describe('Attaching Labels in the task modal', () => {
   it('creates a Label from a new name with a palette color and shows it as a chip on the Task', async () => {
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Fix login' })] });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Fix login' })] });
 
     await openTask(user, 'Fix login');
     await attachLabel(user, 'Bug');
@@ -71,11 +71,11 @@ describe('Attaching Labels in the task modal', () => {
     expect(within(modal()).getByLabelText('Add label')).toHaveValue('');
     const chip = within(taskCard('To Do', 'Fix login')).getByText('Bug');
     expect(chip).toHaveStyle({ backgroundColor: '#0c66e4' });
-    expect(storage.load()?.labels).toEqual([{ id: expect.any(String), name: 'Bug', color: '#0c66e4' }]);
+    expect(saved().labels).toEqual([{ id: expect.any(String), name: 'Bug', color: '#0c66e4' }]);
   });
 
   it('reuses an existing Label when the name is typed in another case, creating no duplicate', async () => {
-    const { user, storage } = renderAppWith({
+    const { user, saved } = renderAppWith({
       labels: [{ id: 'bug', name: 'Bug', color: '#c9372c' }],
       tasks: [task({ id: 't1', title: 'Fix login', labelIds: ['bug'] }), task({ id: 't2', title: 'Fix logout', position: 1 })],
     });
@@ -85,12 +85,12 @@ describe('Attaching Labels in the task modal', () => {
 
     expect(modalLabelNames()).toEqual(['Bug']);
     expect(within(taskCard('To Do', 'Fix logout')).getByText('Bug')).toHaveStyle({ backgroundColor: '#c9372c' });
-    expect(storage.load()?.labels).toEqual([{ id: 'bug', name: 'Bug', color: '#c9372c' }]);
-    expect(storage.load()?.tasks.find((t) => t.id === 't2')?.labelIds).toEqual(['bug']);
+    expect(saved().labels).toEqual([{ id: 'bug', name: 'Bug', color: '#c9372c' }]);
+    expect(saved().tasks.find((t) => t.id === 't2')?.labelIds).toEqual(['bug']);
   });
 
   it('removes a Label from the Task but keeps it on the Board for reuse', async () => {
-    const { user, storage } = renderAppWith({
+    const { user, saved } = renderAppWith({
       labels: [{ id: 'bug', name: 'Bug', color: '#c9372c' }],
       tasks: [task({ id: 't1', title: 'Fix login', labelIds: ['bug'] })],
     });
@@ -100,11 +100,11 @@ describe('Attaching Labels in the task modal', () => {
 
     expect(modalLabelNames()).toEqual([]);
     expect(within(taskCard('To Do', 'Fix login')).queryByText('Bug')).not.toBeInTheDocument();
-    expect(storage.load()?.labels).toEqual([{ id: 'bug', name: 'Bug', color: '#c9372c' }]);
+    expect(saved().labels).toEqual([{ id: 'bug', name: 'Bug', color: '#c9372c' }]);
 
     await attachLabel(user, 'bug');
     expect(modalLabelNames()).toEqual(['Bug']);
-    expect(storage.load()?.labels).toHaveLength(1);
+    expect(saved().labels).toHaveLength(1);
   });
 
   it('keeps the modal open and focus in the input after attaching, ready for the next Label', async () => {
@@ -119,13 +119,13 @@ describe('Attaching Labels in the task modal', () => {
   });
 
   it('attaches nothing for a blank name', async () => {
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Fix login' })] });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Fix login' })] });
 
     await openTask(user, 'Fix login');
     await attachLabel(user, '   ');
 
     expect(modalLabelNames()).toEqual([]);
-    expect(storage.load()?.labels).toEqual([]);
+    expect(saved().labels).toEqual([]);
   });
 });
 

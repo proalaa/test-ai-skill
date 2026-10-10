@@ -3,7 +3,7 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Board, Task } from './board/board';
 import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { renderApp } from './test/renderApp';
+import { renderApp, savedBoard } from './test/renderApp';
 
 type User = ReturnType<typeof renderApp>['user'];
 
@@ -95,7 +95,7 @@ describe('Manage labels screen', () => {
     expect(listedLabelNames()).toEqual(['Defect', 'UI', 'Docs']);
     expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['Defect', 'UI']);
     expect(chipsOnCard('Fix logout').map(([n]) => n)).toEqual(['Defect']);
-    expect(createBoardStorage(store).load()?.labels.map((label) => label.name)).toEqual(['Defect', 'UI', 'Docs']);
+    expect(savedBoard(store).labels.map((label) => label.name)).toEqual(['Defect', 'UI', 'Docs']);
   });
 
   it('renames a Label when its name field loses focus', async () => {
@@ -126,7 +126,7 @@ describe('Manage labels screen', () => {
     expect(name).toHaveValue('ui');
     expect(listedLabelNames()).toEqual(['Bug', 'UI', 'Docs']);
     expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['Bug', 'UI']);
-    expect(createBoardStorage(store).load()?.labels.map((label) => label.name)).toEqual(['Bug', 'UI', 'Docs']);
+    expect(savedBoard(store).labels.map((label) => label.name)).toEqual(['Bug', 'UI', 'Docs']);
 
     await user.type(name, 'x{Enter}');
     expect(within(manageLabels()).queryByRole('alert')).not.toBeInTheDocument();
@@ -172,7 +172,7 @@ describe('Manage labels screen', () => {
       ['UI', 'rgb(31, 132, 90)'],
     ]);
     expect(chipsOnCard('Fix logout')).toEqual([['Bug', 'rgb(201, 55, 44)']]);
-    expect(createBoardStorage(store).load()?.labels[0]).toEqual({ id: 'bug', name: 'Bug', color: '#c9372c' });
+    expect(savedBoard(store).labels[0]).toEqual({ id: 'bug', name: 'Bug', color: '#c9372c' });
   });
 
   describe('deleting a Label', () => {
@@ -189,9 +189,9 @@ describe('Manage labels screen', () => {
       expect(listedLabelNames()).toEqual(['UI', 'Docs']);
       expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['UI']);
       expect(chipsOnCard('Fix logout')).toEqual([]);
-      const saved = createBoardStorage(store).load();
-      expect(saved?.labels.map((label) => label.name)).toEqual(['UI', 'Docs']);
-      expect(saved?.tasks.flatMap((t) => t.labelIds)).toEqual(['ui']);
+      const afterDelete = savedBoard(store);
+      expect(afterDelete.labels.map((label) => label.name)).toEqual(['UI', 'Docs']);
+      expect(afterDelete.tasks.flatMap((t) => t.labelIds)).toEqual(['ui']);
       // Focus stays on the Manage labels screen.
       expect(manageLabels()).toContainElement(document.activeElement as HTMLElement);
     });
@@ -234,7 +234,7 @@ describe('Manage labels screen', () => {
       await user.click(within(confirm).getByRole('button', { name: 'Delete label' }));
 
       expect(listedLabelNames()).toEqual(['Bug', 'UI']);
-      expect(createBoardStorage(store).load()?.labels.map((label) => label.name)).toEqual(['Bug', 'UI']);
+      expect(savedBoard(store).labels.map((label) => label.name)).toEqual(['Bug', 'UI']);
     });
   });
 

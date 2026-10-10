@@ -49,7 +49,7 @@ function jsonFile(text: string, name = 'backup.json') {
 
 describe('Importing a Board', () => {
   it('asks for confirmation, then replaces the whole Board and saves it', async () => {
-    const { user, storage } = renderWithCurrentBoard();
+    const { user, saved } = renderWithCurrentBoard();
 
     await user.upload(screen.getByLabelText(/import/i), jsonFile(exportBoard(backupBoard)));
 
@@ -63,14 +63,14 @@ describe('Importing a Board', () => {
     expect(taskTitles('To Do')).toEqual(['Restored two']);
     expect(taskTitles('In Progress')).toEqual([]);
     expect(taskTitles('Done')).toEqual(['Restored one']);
-    expect(storage.load()).toEqual(backupBoard);
+    expect(saved()).toEqual(backupBoard);
   });
 
   it.each([
     ['the Cancel button', '{Cancel}'],
     ['Escape', '{Escape}'],
   ])('changes nothing when cancelled with %s', async (_, how) => {
-    const { user, storage } = renderWithCurrentBoard();
+    const { user, saved } = renderWithCurrentBoard();
 
     await user.upload(screen.getByLabelText(/import/i), jsonFile(exportBoard(backupBoard)));
     const dialog = await screen.findByRole('alertdialog');
@@ -81,7 +81,7 @@ describe('Importing a Board', () => {
     expect(taskTitles('To Do')).toEqual(['Current A']);
     expect(taskTitles('In Progress')).toEqual(['Current B']);
     expect(taskTitles('Done')).toEqual([]);
-    expect(storage.load()).toEqual(currentBoard);
+    expect(saved()).toEqual(currentBoard);
   });
 
   it.each([
@@ -89,7 +89,7 @@ describe('Importing a Board', () => {
     ['the wrong shape', JSON.stringify({ version: 1, board: { tasks: 'none' } }), /tasks/i],
     ['an unknown version', JSON.stringify({ version: 2, board: backupBoard }), /version/i],
   ])('shows an error and leaves the Board unchanged for a file with %s', async (_, text, reason) => {
-    const { user, storage } = renderWithCurrentBoard();
+    const { user, saved } = renderWithCurrentBoard();
 
     await user.upload(screen.getByLabelText(/import/i), jsonFile(text, 'broken.json'));
 
@@ -99,7 +99,7 @@ describe('Importing a Board', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['Current A']);
     expect(taskTitles('In Progress')).toEqual(['Current B']);
-    expect(storage.load()).toEqual(currentBoard);
+    expect(saved()).toEqual(currentBoard);
   });
 
   it('clears the error once a valid file is imported', async () => {

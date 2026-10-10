@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { fixedClock } from './clock';
+import { memoryKeyValueStore } from './storage/boardStorage';
 import { renderApp } from './test/renderApp';
 
 function columnNames() {
@@ -114,12 +115,48 @@ describe('Autosave', () => {
   });
 
   it('stamps Created at and Updated at from the injected clock', async () => {
-    const { user, storage } = renderApp({ clock: fixedClock('2026-03-04T05:06:07.000Z') });
+    const { user, saved } = renderApp({ clock: fixedClock('2026-03-04T05:06:07.000Z') });
 
     await user.type(addTaskInput('To Do'), 'Timed{Enter}');
 
-    const [task] = storage.load()!.tasks;
+    const [task] = saved().tasks;
     expect(task.createdAt).toBe('2026-03-04T05:06:07.000Z');
     expect(task.updatedAt).toBe('2026-03-04T05:06:07.000Z');
+  });
+});
+
+describe('Saved data that can’t be read', () => {
+  const unreadable = '{"version": 1, "board": {"tasks": "oops"';
+
+  it('tells the user, starts with an empty Board, and keeps the unreadable data aside before saving anything', async () => {
+    const store = memoryKeyValueStore({ 'task-board': unreadable });
+    const { user } = renderApp({ store });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/saved board couldn’t be read/i);
+    expect(screen.queryAllByRole('listitem')).toEqual([]);
+
+    await user.type(addTaskInput('To Do'), 'Fresh start{Enter}');
+
+    expect(taskTitles('To Do')).toEqual(['Fresh start']);
+    expect(store.getItem('task-board-unreadable')).toBe(unreadable);
+  });
+
+  it('can be dismissed', async () => {
+    const { user } = renderApp({ store: memoryKeyValueStore({ 'task-board': unreadable }) });
+
+    await user.click(within(screen.getByRole('alert')).getByRole('button', { name: /dismiss/i }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('says nothing when there is no saved Board yet, or when it reads fine', async () => {
+    const first = renderApp();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await first.user.type(addTaskInput('To Do'), 'Kept{Enter}');
+    first.unmount();
+
+    renderApp({ store: first.store });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(first.store.getItem('task-board-unreadable')).toBeNull();
   });
 });

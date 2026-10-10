@@ -9,13 +9,18 @@ export type Dispatch = (action: BoardAction) => boolean;
 /** Replaces the whole Board (used by import) and saves it. */
 export type ReplaceBoard = (board: Board) => void;
 
+/** Why the saved Board could not be read (it was kept aside), or null when it was fine. */
+export type LoadProblem = string | null;
+
 /**
  * The Board as React state. `dispatch` runs an action through the Board module
  * at `clock.now()` and, when the Board changed, saves it (autosave).
- * `replaceBoard` swaps in a whole new Board (import) and saves it.
+ * `replaceBoard` swaps in a whole new Board (import) and saves it. When the
+ * saved Board can't be read it starts empty and reports the problem.
  */
-export function useBoard(storage: BoardStorage, clock: Clock): [Board, Dispatch, ReplaceBoard] {
-  const [board, setBoard] = useState<Board>(() => storage.load() ?? emptyBoard());
+export function useBoard(storage: BoardStorage, clock: Clock): [Board, Dispatch, ReplaceBoard, LoadProblem] {
+  const [loaded] = useState(() => storage.load());
+  const [board, setBoard] = useState<Board>(() => (loaded.status === 'loaded' ? loaded.board : emptyBoard()));
   // The latest Board, so several dispatches before a re-render all build on each other.
   const latest = useRef(board);
 
@@ -40,5 +45,5 @@ export function useBoard(storage: BoardStorage, clock: Clock): [Board, Dispatch,
     [storage],
   );
 
-  return [board, dispatch, replaceBoard];
+  return [board, dispatch, replaceBoard, loaded.status === 'unreadable' ? loaded.error : null];
 }

@@ -20,7 +20,8 @@ export interface AppProps {
  * nothing below it reads localStorage or the system time directly.
  */
 export function App({ storage, clock }: AppProps) {
-  const [board, dispatch, replaceBoard] = useBoard(storage, clock);
+  const [board, dispatch, replaceBoard, loadProblem] = useBoard(storage, clock);
+  const [showLoadProblem, setShowLoadProblem] = useState(true);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [managingLabels, setManagingLabels] = useState(false);
   const boardIsEmpty = board.tasks.length === 0;
@@ -38,6 +39,15 @@ export function App({ storage, clock }: AppProps) {
           <BoardTransfer board={board} replaceBoard={replaceBoard} clock={clock} />
         </div>
       </header>
+      {loadProblem && showLoadProblem && (
+        <p className="load-problem" role="alert">
+          Your saved Board couldn’t be read ({loadProblem}) so you are starting with an empty Board. The saved data
+          has been kept aside in this browser, untouched.{' '}
+          <button type="button" className="link-button" onClick={() => setShowLoadProblem(false)}>
+            Dismiss
+          </button>
+        </p>
+      )}
       <main className="board">
         <MovableTasks board={board} dispatch={dispatch}>
           {(tasksOf) =>
