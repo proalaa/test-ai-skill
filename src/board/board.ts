@@ -191,13 +191,24 @@ function checkConsistency({ tasks, labels }: Board): void {
  * Something the user does to the Board. The caller supplies new ids so the
  * Board module stays deterministic.
  */
-export type BoardAction = AddTask | UpdateTask | DeleteTask | AttachLabel | DetachLabel;
+export type BoardAction = AddTask | MoveTask | UpdateTask | DeleteTask | AttachLabel | DetachLabel;
 
 export interface AddTask {
   type: 'addTask';
   id: string;
   status: StatusId;
   title: string;
+}
+
+/**
+ * Moves a Task to `status` so that it ends up at index `position` of that
+ * Column (0 = top), counted after the Task has left its old place.
+ */
+export interface MoveTask {
+  type: 'moveTask';
+  id: string;
+  status: StatusId;
+  position: number;
 }
 
 /** The Task fields the user edits directly (in the task modal). */
@@ -249,6 +260,8 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
   switch (action.type) {
     case 'addTask':
       return addTask(board, action, now);
+    case 'moveTask':
+      return moveTask(board, action, now);
     case 'updateTask':
       return updateTask(board, action, now);
     case 'deleteTask':
@@ -258,6 +271,37 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
     case 'detachLabel':
       return detachLabel(board, action, now);
   }
+}
+
+/**
+ * Moves a Task to a Status and position, renumbering both affected Columns so
+ * positions stay 0..n-1. A move to where the Task already is changes nothing.
+ */
+function moveTask(board: Board, { id, status, position }: MoveTask, now: Date): Board {
+  const task = board.tasks.find((t) => t.id === id);
+  if (!task) return board;
+
+  const target = tasksIn(board, status).filter((t) => t.id !== id);
+  const index = Math.max(0, Math.min(Math.trunc(position), target.length));
+  if (task.status === status && task.position === index) return board;
+
+  const timestamp = now.toISOString();
+  const moved: Task = { ...task, status, updatedAt: timestamp, completedAt: completedAtAfterMove(task, status, timestamp) };
+  target.splice(index, 0, moved);
+
+  const renumbered = new Map<string, Task>();
+  const renumber = (tasks: Task[]) =>
+    tasks.forEach((t, i) => renumbered.set(t.id, t.position === i && t !== moved ? t : { ...t, position: i }));
+  renumber(target);
+  if (task.status !== status) renumber(tasksIn(board, task.status).filter((t) => t.id !== id));
+
+  return { ...board, tasks: board.tasks.map((t) => renumbered.get(t.id) ?? t) };
+}
+
+/** Entering Done records Completed at; leaving Done clears it; otherwise it is kept. */
+function completedAtAfterMove(task: Task, status: StatusId, now: Timestamp): Timestamp | null {
+  if (status !== 'done') return null;
+  return task.status === 'done' ? task.completedAt : now;
 }
 
 /** Adds a Task at the bottom of its Column. A blank title adds nothing. */
@@ -347,8 +391,20 @@ function findLabelByName(board: Board, name: string): Label | undefined {
 }
 
 /** The Labels a Task carries, in the order they were attached. */
-export function labelsOf(board: Board, task: Task): Label[] {
+export function labelsOf(board: Pick<Board, 'labels'>, task: Task): Label[] {
   return task.labelIds.flatMap((id) => board.labels.find((label) => label.id === id) ?? []);
+}
+
+/** The local calendar date of `date` (in the user's time zone), as `YYYY-MM-DD`. */
+export function localDate(date: Date): LocalDate {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Whether the Task is Overdue on the local date `today`. */
+export function isOverdue(task: Task, today: LocalDate): boolean {
+  // `YYYY-MM-DD` strings sort in calendar order, so a string compare is enough.
+  return task.status !== 'done' && task.dueDate !== null && task.dueDate < today;
 }
 
 /** The Tasks with the given Status, in Column order (top first). */

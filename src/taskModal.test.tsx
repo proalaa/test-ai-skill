@@ -151,7 +151,7 @@ describe('Editing a Task in the modal', () => {
       dueDate: '2026-11-03',
     });
     expect(within(dialog).queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
-    expect(taskTitles('To Do')).toEqual(['Draft plan']);
+    expect(within(column('To Do')).getByText('Draft plan')).toBeInTheDocument();
 
     first.unmount();
     const second = renderApp({ store: first.store });

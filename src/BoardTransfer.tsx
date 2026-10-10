@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from 'react';
-import { exportBoard, importBoard, type Board } from './board/board';
+import { exportBoard, importBoard, localDate, type Board } from './board/board';
 import type { Clock } from './clock';
 import { ConfirmDialog } from './ConfirmDialog';
 import type { ReplaceBoard } from './useBoard';
@@ -75,10 +75,4 @@ export function BoardTransfer({ board, replaceBoard, clock }: BoardTransferProps
       )}
     </div>
   );
-}
-
-/** The local calendar date of `date`, as `YYYY-MM-DD`. */
-function localDate(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
