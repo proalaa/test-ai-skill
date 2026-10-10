@@ -11,16 +11,18 @@ Behind that, this ticket lays the foundations every later ticket builds on:
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The dev server, the Vitest suite and the Playwright suite all run from a clean checkout via scripts.
-- [ ] The app shows To Do, In Progress, Done in that order, each with a count of 0.
-- [ ] The empty-board hint appears in To Do when the Board has no Tasks.
-- [ ] No sample Tasks exist on first launch.
-- [ ] The theme switches with the OS (or emulated) color-scheme preference.
-- [ ] On a narrow viewport the Columns scroll horizontally rather than squashing.
-- [ ] The Board module's data model covers every Phase 1 field, and stored data carries data-format version 1.
-- [ ] The app's top level takes storage and a clock; nothing below it reads localStorage or the system time directly.
-- [ ] A Testing Library test renders the whole app (in-memory storage, fixed clock) and sees the three Columns and the hint; a Playwright smoke test sees the same in a real browser.
+- [x] The dev server, the Vitest suite and the Playwright suite all run from a clean checkout via scripts.
+- [x] The app shows To Do, In Progress, Done in that order, each with a count of 0.
+- [x] The empty-board hint appears in To Do when the Board has no Tasks.
+- [x] No sample Tasks exist on first launch.
+- [x] The theme switches with the OS (or emulated) color-scheme preference.
+- [x] On a narrow viewport the Columns scroll horizontally rather than squashing.
+- [x] The Board module's data model covers every Phase 1 field, and stored data carries data-format version 1.
+- [x] The app's top level takes storage and a clock; nothing below it reads localStorage or the system time directly.
+- [x] A Testing Library test renders the whole app (in-memory storage, fixed clock) and sees the three Columns and the hint; a Playwright smoke test sees the same in a real browser.
 
 ## Comments
+
+**2026-10-10 (implement-spec):** Resolved on integration branch `task-board-phase-1`. Merged as 84bff33 (Merge ticket 01); review fixes in 927b86a. All Vitest, typecheck and Playwright suites pass at 927b86a.

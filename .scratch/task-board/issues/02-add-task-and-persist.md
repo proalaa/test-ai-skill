@@ -6,14 +6,16 @@
 
 **Blocked by:** 01 (Scaffold the app and show the empty Board)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Adding a Task in any Column places it at the bottom of that Column with the default field values.
-- [ ] Created at and Updated at come from the injected clock.
-- [ ] Enter on an empty or whitespace-only input creates nothing.
-- [ ] The input keeps focus after a Task is added.
-- [ ] Column counts reflect the number of Tasks; the hint disappears once a Task exists.
-- [ ] After a reload the same Tasks appear in the same Columns and order.
-- [ ] Board module tests cover add rules (placement, defaults, empty-title rejection); app-level Testing Library tests cover quick add; a Playwright test covers add then reload.
+- [x] Adding a Task in any Column places it at the bottom of that Column with the default field values.
+- [x] Created at and Updated at come from the injected clock.
+- [x] Enter on an empty or whitespace-only input creates nothing.
+- [x] The input keeps focus after a Task is added.
+- [x] Column counts reflect the number of Tasks; the hint disappears once a Task exists.
+- [x] After a reload the same Tasks appear in the same Columns and order.
+- [x] Board module tests cover add rules (placement, defaults, empty-title rejection); app-level Testing Library tests cover quick add; a Playwright test covers add then reload.
 
 ## Comments
+
+**2026-10-10 (implement-spec):** Resolved on integration branch `task-board-phase-1`. Merged as a6629eb (Merge ticket 02); review fixes in 927b86a. All Vitest, typecheck and Playwright suites pass at 927b86a.

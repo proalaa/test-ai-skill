@@ -1,6 +1,6 @@
 # Spec: Task Board — Phase 1
 
-Status: ready-for-agent
+Status: resolved
 
 Domain terms (Board, Status, Column, Task, Priority, Due date, Overdue, Label, Custom Field) are used exactly as defined in `GLOSSARY.md`.
 
@@ -249,3 +249,5 @@ None. The repo has no code yet. The first ticket sets up the test tooling and es
   - the quick-add input keeps focus after adding
 
 ## Comments
+
+**2026-10-10 (implement-spec):** Phase 1 implemented on integration branch `task-board-phase-1` (tickets 01–08 resolved; code review run and fixes merged in 927b86a). Known accepted extras beyond the stories: Label suggestions in the modal, "Used by N tasks" on Manage labels rows, colour names on swatches, drag-and-drop screen-reader announcements, Dismiss on import error, a "Clear due date" button. Unreadable stored data is copied to the `task-board-unreadable` localStorage key and the user is alerted.

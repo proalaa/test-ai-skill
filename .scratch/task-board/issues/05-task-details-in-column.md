@@ -6,12 +6,14 @@
 
 **Blocked by:** 04 (Edit and delete a Task in the modal)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] A Priority badge shows for Low, Medium, High and Urgent, and not for None.
-- [ ] The Due date shows on the Task, in red only when the Task is Overdue.
-- [ ] A Task due today is not shown as Overdue; a Task in Done is never shown as Overdue.
-- [ ] The description icon shows only when the description is non-empty.
-- [ ] Board module tests cover the Overdue rule (past date, today, Done, no Due date) with a fixed clock; app-level Testing Library tests cover what the Task shows in its Column.
+- [x] A Priority badge shows for Low, Medium, High and Urgent, and not for None.
+- [x] The Due date shows on the Task, in red only when the Task is Overdue.
+- [x] A Task due today is not shown as Overdue; a Task in Done is never shown as Overdue.
+- [x] The description icon shows only when the description is non-empty.
+- [x] Board module tests cover the Overdue rule (past date, today, Done, no Due date) with a fixed clock; app-level Testing Library tests cover what the Task shows in its Column.
 
 ## Comments
+
+**2026-10-10 (implement-spec):** Resolved on integration branch `task-board-phase-1`. Merged as 14ededd (Merge ticket 05); review fixes in 927b86a. All Vitest, typecheck and Playwright suites pass at 927b86a.
