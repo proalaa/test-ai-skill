@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { labelsOf, type Board, type Task } from './board/board';
 import { LabelChip } from './LabelChip';
 import type { Dispatch } from './useBoard';
@@ -17,6 +17,7 @@ interface TaskLabelsProps {
 export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
   const id = useId();
   const [name, setName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const attached = labelsOf(board, task);
   const suggestions = board.labels.filter((label) => !task.labelIds.includes(label.id));
 
@@ -25,6 +26,12 @@ export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
     if (name.trim() === '') return;
     dispatch({ type: 'attachLabel', taskId: task.id, name, newLabelId: crypto.randomUUID() });
     setName('');
+  }
+
+  function detach(labelId: string) {
+    // The remove button goes away with its chip, so keep focus in the modal first.
+    inputRef.current?.focus();
+    dispatch({ type: 'detachLabel', taskId: task.id, labelId });
   }
 
   return (
@@ -42,7 +49,7 @@ export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
                     type="button"
                     className="label-chip-remove"
                     aria-label={`Remove label ${label.name}`}
-                    onClick={() => dispatch({ type: 'detachLabel', taskId: task.id, labelId: label.id })}
+                    onClick={() => detach(label.id)}
                   >
                     ×
                   </button>
@@ -53,6 +60,7 @@ export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
         )}
         <form className="label-add" onSubmit={attach}>
           <input
+            ref={inputRef}
             aria-label="Add label"
             placeholder="Add a label…"
             list={`${id}-suggestions`}

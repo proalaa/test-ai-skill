@@ -131,6 +131,76 @@ describe('Keyboard use of the modal', () => {
       expect(dialog).toContainElement(document.activeElement as HTMLElement);
     }
   });
+
+  describe('after removing a Label chip', () => {
+    function withLabel(): Board {
+      return {
+        labels: [{ id: 'bug', name: 'Bug', color: '#c9372c' }],
+        tasks: [task({ id: 't1', title: 'Chipped', labelIds: ['bug'] })],
+      };
+    }
+
+    async function removeChip(user: ReturnType<typeof renderApp>['user']) {
+      const dialog = await openTask(user, 'Chipped');
+      await user.click(within(dialog).getByRole('button', { name: /remove label bug/i }));
+      return dialog;
+    }
+
+    it('keeps focus inside the modal', async () => {
+      const { user } = renderAppWith(withLabel());
+      const dialog = await removeChip(user);
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    });
+
+    it('still closes on Escape', async () => {
+      const { user } = renderAppWith(withLabel());
+      await removeChip(user);
+
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('still keeps Tab inside the modal', async () => {
+      const { user } = renderAppWith(withLabel());
+      const dialog = await removeChip(user);
+
+      for (let i = 0; i < 12; i++) {
+        await user.tab();
+        expect(dialog).toContainElement(document.activeElement as HTMLElement);
+      }
+    });
+  });
+
+  describe('when focus has somehow left the modal', () => {
+    function blurEverything() {
+      (document.activeElement as HTMLElement | null)?.blur();
+      expect(document.activeElement).toBe(document.body);
+    }
+
+    it('still closes on Escape', async () => {
+      const { user } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Lost' })] });
+      await openTask(user, 'Lost');
+      blurEverything();
+
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['Tab', false],
+      ['Shift+Tab', true],
+    ])('brings focus back into the modal on %s', async (_, shift) => {
+      const { user } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Lost' })] });
+      const dialog = await openTask(user, 'Lost');
+      blurEverything();
+
+      await user.tab({ shift });
+
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    });
+  });
 });
 
 describe('Editing a Task in the modal', () => {

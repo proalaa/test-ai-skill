@@ -67,3 +67,19 @@ test('Labels attach by name, reuse ignoring case, show as chips and survive a re
   const labels = await page.evaluate(() => JSON.parse(window.localStorage.getItem('task-board') ?? '{}').board.labels);
   expect(labels.map((label: { name: string }) => label.name)).toEqual(['Bug', 'UI']);
 });
+
+test('removing a Label chip keeps focus in the task modal, so Tab and Escape still work', async ({ page }) => {
+  await addTask(page, 'To Do', 'Fix login');
+  await openTask(page, 'Fix login');
+  await attachLabel(page, 'Bug');
+
+  await modal(page).getByRole('button', { name: /remove label bug/i }).click();
+
+  await expect(modal(page).getByLabel('Add label')).toBeFocused();
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press('Tab');
+    expect(await modal(page).evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await expect(modal(page)).toHaveCount(0);
+});
