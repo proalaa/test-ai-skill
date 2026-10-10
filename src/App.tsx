@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { STATUSES, localDate, type Label, type LocalDate, type Status, type Task } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
+import { ManageLabels } from './ManageLabels';
 import type { Clock } from './clock';
 import { MovableTaskList, MovableTasks, useColumnDropTarget } from './MovableTasks';
 import type { BoardStorage } from './storage/boardStorage';
@@ -21,6 +22,7 @@ export interface AppProps {
 export function App({ storage, clock }: AppProps) {
   const [board, dispatch, replaceBoard] = useBoard(storage, clock);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [managingLabels, setManagingLabels] = useState(false);
   const boardIsEmpty = board.tasks.length === 0;
   const openTask = board.tasks.find((task) => task.id === openTaskId);
   const today = localDate(clock.now());
@@ -29,7 +31,12 @@ export function App({ storage, clock }: AppProps) {
     <>
       <header className="app-header">
         <h1>Task Board</h1>
-        <BoardTransfer board={board} replaceBoard={replaceBoard} clock={clock} />
+        <div className="header-actions">
+          <button type="button" className="button" onClick={() => setManagingLabels(true)}>
+            Manage labels
+          </button>
+          <BoardTransfer board={board} replaceBoard={replaceBoard} clock={clock} />
+        </div>
       </header>
       <main className="board">
         <MovableTasks board={board} dispatch={dispatch}>
@@ -52,6 +59,7 @@ export function App({ storage, clock }: AppProps) {
       {openTask && (
         <TaskModal key={openTask.id} task={openTask} board={board} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />
       )}
+      {managingLabels && <ManageLabels board={board} dispatch={dispatch} onClose={() => setManagingLabels(false)} />}
     </>
   );
 }

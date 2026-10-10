@@ -429,6 +429,107 @@ body {
   min-width: 0;
 }
 
+/* Manage labels screen (ticket 07) */
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.manage-labels .modal-header {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.manage-labels h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.label-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.label-row .label-chip {
+  min-width: 48px;
+  justify-content: center;
+}
+
+.label-rename {
+  display: flex;
+  flex: 1 1 140px;
+}
+
+.label-rename input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.label-rename input[aria-invalid='true'] {
+  border-color: var(--overdue);
+}
+
+.label-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--overdue);
+  font-size: 0.8125rem;
+}
+
+.label-colors {
+  display: flex;
+  gap: 4px;
+}
+
+/* Each palette color is a round swatch; the picked one gets a ring. */
+.label-color {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.label-color:checked {
+  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px var(--fg);
+}
+
+.label-color:focus-visible {
+  outline: 2px solid #4c9aff;
+  outline-offset: 3px;
+}
+
+.label-usage {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  min-width: 88px;
+}
+
 /* Task details in the Column (ticket 05) */
 
 .task-title {
