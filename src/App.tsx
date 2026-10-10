@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { STATUSES, tasksIn, type Board, type Status } from './board/board';
+import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
 import type { BoardStorage } from './storage/boardStorage';
 import { useBoard, type Dispatch } from './useBoard';
@@ -15,21 +16,27 @@ export interface AppProps {
  * nothing below it reads localStorage or the system time directly.
  */
 export function App({ storage, clock }: AppProps) {
-  const [board, dispatch] = useBoard(storage, clock);
+  const [board, dispatch, replaceBoard] = useBoard(storage, clock);
   const boardIsEmpty = board.tasks.length === 0;
 
   return (
-    <main className="board">
-      {STATUSES.map((status) => (
-        <Column
-          key={status.id}
-          status={status}
-          board={board}
-          dispatch={dispatch}
-          showHint={boardIsEmpty && status.id === 'todo'}
-        />
-      ))}
-    </main>
+    <>
+      <header className="app-header">
+        <h1>Task Board</h1>
+        <BoardTransfer board={board} replaceBoard={replaceBoard} clock={clock} />
+      </header>
+      <main className="board">
+        {STATUSES.map((status) => (
+          <Column
+            key={status.id}
+            status={status}
+            board={board}
+            dispatch={dispatch}
+            showHint={boardIsEmpty && status.id === 'todo'}
+          />
+        ))}
+      </main>
+    </>
   );
 }
 
