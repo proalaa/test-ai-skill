@@ -121,11 +121,11 @@ export function MovableTasks({ board, dispatch, children }: MovableTasksProps) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-      // Only Space picks a Task up, leaving Enter free for opening it.
+      // Only Space picks a Task up and drops it, leaving Enter free for opening it.
       keyboardCodes: {
         start: [KeyboardCode.Space],
         cancel: [KeyboardCode.Esc],
-        end: [KeyboardCode.Space, KeyboardCode.Enter],
+        end: [KeyboardCode.Space],
       },
     }),
   );
@@ -138,15 +138,19 @@ export function MovableTasks({ board, dispatch, children }: MovableTasksProps) {
 
   const tasksById = new Map(board.tasks.map((task) => [task.id, task]));
   const title = (id: UniqueIdentifier) => tasksById.get(String(id))?.title ?? 'Task';
-  const columnName = (id: UniqueIdentifier | undefined) => {
-    const status = id === undefined ? undefined : columnOf(latestPreview.current ?? placementOf(board), id);
-    return STATUSES.find((s) => s.id === status)?.name ?? 'the Board';
+  /** Where the dragged Task would land if dropped now, e.g. "A is in Done, position 2 of 3." */
+  const whereItWouldLand = (active: Active, over: Over) => {
+    const placement = placeOver(latestPreview.current ?? placementOf(board), active, over, true);
+    const status = columnOf(placement, active.id);
+    if (!status) return undefined;
+    const name = STATUSES.find((s) => s.id === status)!.name;
+    const ids = placement[status];
+    return `${title(active.id)} is in ${name}, position ${ids.indexOf(String(active.id)) + 1} of ${ids.length}.`;
   };
   const announcements: Announcements = {
     onDragStart: ({ active }) => `Picked up ${title(active.id)}.`,
-    onDragOver: ({ active, over }) => (over ? `${title(active.id)} is over ${columnName(over.id)}.` : undefined),
-    onDragEnd: ({ active, over }) =>
-      over ? `${title(active.id)} was dropped in ${columnName(active.id)}.` : `${title(active.id)} was not moved.`,
+    onDragOver: ({ active, over }) => (over ? whereItWouldLand(active, over) : undefined),
+    onDragEnd: ({ active, over }) => (over ? `Dropped ${title(active.id)}.` : `${title(active.id)} was not moved.`),
     onDragCancel: ({ active }) => `Moving ${title(active.id)} was cancelled.`,
   };
 
