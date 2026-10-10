@@ -295,16 +295,22 @@ export interface DeleteLabel {
   labelId: string;
 }
 
+/** A color in the Label palette: its CSS hex value and the name the user sees. */
+export interface PaletteColor {
+  hex: string;
+  name: string;
+}
+
 /** The fixed palette new Labels take their color from, in order. */
-export const LABEL_COLORS: readonly string[] = [
-  '#0c66e4', // blue
-  '#1f845a', // green
-  '#b65c02', // orange
-  '#6e5dc6', // purple
-  '#c9372c', // red
-  '#227d9b', // teal
-  '#ae4787', // magenta
-  '#626f86', // gray
+export const LABEL_PALETTE: readonly PaletteColor[] = [
+  { hex: '#0c66e4', name: 'Blue' },
+  { hex: '#1f845a', name: 'Green' },
+  { hex: '#b65c02', name: 'Orange' },
+  { hex: '#6e5dc6', name: 'Purple' },
+  { hex: '#c9372c', name: 'Red' },
+  { hex: '#227d9b', name: 'Teal' },
+  { hex: '#ae4787', name: 'Magenta' },
+  { hex: '#626f86', name: 'Gray' },
 ];
 
 /** The Board after `action` was applied at time `now`. Never mutates `board`. */
@@ -487,7 +493,7 @@ export function labelRenameError(board: Pick<Board, 'labels'>, labelId: string, 
 /** The palette color the fewest Labels use; the earliest in the palette on a tie. */
 function nextLabelColor(board: Board): string {
   const uses = (color: string) => board.labels.filter((label) => label.color === color).length;
-  return LABEL_COLORS.reduce((best, color) => (uses(color) < uses(best) ? color : best));
+  return LABEL_PALETTE.reduce((best, color) => (uses(color.hex) < uses(best.hex) ? color : best)).hex;
 }
 
 /** The Label with the given name, ignoring case, if the Board has one. */

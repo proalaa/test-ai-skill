@@ -1,21 +1,9 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
-import { LABEL_COLORS, labelRenameError, labelUsageCount, type Board, type Label } from './board/board';
+import { LABEL_PALETTE, labelRenameError, labelUsageCount, type Board, type Label } from './board/board';
 import { ConfirmDialog } from './ConfirmDialog';
 import { LabelChip } from './LabelChip';
 import { Modal } from './Modal';
 import type { Dispatch } from './useBoard';
-
-/** What the palette colors are called, for screen readers and tooltips. */
-const COLOR_NAMES: Record<string, string> = {
-  '#0c66e4': 'Blue',
-  '#1f845a': 'Green',
-  '#b65c02': 'Orange',
-  '#6e5dc6': 'Purple',
-  '#c9372c': 'Red',
-  '#227d9b': 'Teal',
-  '#ae4787': 'Magenta',
-  '#626f86': 'Gray',
-};
 
 interface ManageLabelsProps {
   board: Board;
@@ -116,17 +104,17 @@ function LabelRow({ label, usageCount, board, dispatch, onDelete }: LabelRowProp
         </p>
       )}
       <div className="label-colors" role="radiogroup" aria-label="Color">
-        {LABEL_COLORS.map((color) => (
+        {LABEL_PALETTE.map((color) => (
           <input
-            key={color}
+            key={color.hex}
             type="radio"
             className="label-color"
             name={`${id}-color`}
-            aria-label={COLOR_NAMES[color]}
-            title={COLOR_NAMES[color]}
-            style={{ backgroundColor: color }}
-            checked={label.color === color}
-            onChange={() => dispatch({ type: 'recolorLabel', labelId: label.id, color })}
+            aria-label={color.name}
+            title={color.name}
+            style={{ backgroundColor: color.hex }}
+            checked={label.color === color.hex}
+            onChange={() => dispatch({ type: 'recolorLabel', labelId: label.id, color: color.hex })}
           />
         ))}
       </div>
