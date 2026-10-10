@@ -51,7 +51,7 @@ export function TaskModal({ task, dispatch, onClose }: TaskModalProps) {
   }
 
   return (
-    <Modal label="Task details" className="task-modal" onClose={close} initialFocus={titleRef}>
+    <Modal label="Task details" className="modal task-modal" onClose={close} initialFocus={titleRef}>
       <div className="modal-header">
         <label className="field field-title">
           <span className="field-label">Title</span>

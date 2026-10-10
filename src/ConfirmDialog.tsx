@@ -1,10 +1,10 @@
-import { useRef, type ReactNode } from 'react';
+import { useId, useRef, type ReactNode } from 'react';
 import { Modal } from './Modal';
 
-interface ConfirmDialogProps {
-  /** The question, e.g. "Delete this Task?"; also the dialog's accessible name. */
+export interface ConfirmDialogProps {
   title: string;
-  children?: ReactNode;
+  children: ReactNode;
+  /** Text of the button that goes ahead, e.g. "Replace board" or "Delete". */
   confirmLabel: string;
   onConfirm: () => void;
   /** Called by the Cancel button and by Escape. */
@@ -12,20 +12,32 @@ interface ConfirmDialogProps {
 }
 
 /**
- * Asks the user to confirm a destructive action. Focus starts on Cancel so
- * that pressing Enter straight away is safe.
+ * A modal "are you sure?" dialog (role `alertdialog`). Focus starts on Cancel
+ * (the safe choice) and stays inside the dialog; Escape cancels. It can be
+ * opened from inside another modal: Escape then cancels only this dialog.
  */
 export function ConfirmDialog({ title, children, confirmLabel, onConfirm, onCancel }: ConfirmDialogProps) {
+  const titleId = useId();
+  const messageId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
+
   return (
-    <Modal label={title} role="alertdialog" className="confirm-dialog" onClose={onCancel} initialFocus={cancelRef}>
-      <h2 className="confirm-title">{title}</h2>
-      {children && <div className="confirm-body">{children}</div>}
-      <div className="confirm-actions">
-        <button ref={cancelRef} type="button" className="button" onClick={onCancel}>
+    <Modal
+      role="alertdialog"
+      labelledBy={titleId}
+      describedBy={messageId}
+      className="dialog"
+      backdropClassName="dialog-backdrop"
+      onClose={onCancel}
+      initialFocus={cancelRef}
+    >
+      <h2 id={titleId}>{title}</h2>
+      <div id={messageId}>{children}</div>
+      <div className="dialog-actions">
+        <button ref={cancelRef} type="button" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" className="button button-danger" onClick={onConfirm}>
+        <button type="button" className="danger" onClick={onConfirm}>
           {confirmLabel}
         </button>
       </div>

@@ -61,7 +61,91 @@ describe('Board data format', () => {
 
   it('rejects data with an unknown version', () => {
     const text = JSON.stringify({ version: 99, board: fullBoard });
+    expect(importBoard(text)).toEqual({ ok: false, error: expect.stringMatching(/version/i) });
+  });
+
+  it('rejects text that is not valid JSON', () => {
+    expect(importBoard('{"version": 1, "board": ')).toEqual({ ok: false, error: expect.stringMatching(/JSON/) });
+  });
+
+  it.each([
+    ['a bare array', []],
+    ['null', null],
+    ['an export with no Board', { version: 1 }],
+    ['a Board that is not an object', { version: 1, board: 'tasks' }],
+    ['a Board without Tasks', { version: 1, board: { labels: [] } }],
+    ['a Board without Labels', { version: 1, board: { tasks: [] } }],
+  ])('rejects %s', (_, data) => {
+    expect(importBoard(JSON.stringify(data))).toEqual({ ok: false, error: expect.any(String) });
+  });
+
+  /** fullBoard exported, with the first Task's fields overridden (undefined drops the field). */
+  function withFirstTask(fields: Record<string, unknown>): string {
+    const [first, ...rest] = fullBoard.tasks;
+    return JSON.stringify({ version: 1, board: { ...fullBoard, tasks: [{ ...first, ...fields }, ...rest] } });
+  }
+
+  it.each<[string, Record<string, unknown>]>([
+    ['no id', { id: undefined }],
+    ['a numeric id', { id: 7 }],
+    ['no title', { title: undefined }],
+    ['a blank title', { title: '   ' }],
+    ['a description that is not text', { description: null }],
+    ['an unknown Status', { status: 'blocked' }],
+    ['a position that is not a number', { position: '0' }],
+    ['a negative position', { position: -1 }],
+    ['a fractional position', { position: 0.5 }],
+    ['an unknown Priority', { priority: 'critical' }],
+    ['a Due date that is not a calendar date', { dueDate: '1 Oct 2026' }],
+    ['Label ids that are not a list', { labelIds: 'l1' }],
+    ['a Label id that is not text', { labelIds: [1] }],
+    ['no Created at', { createdAt: undefined }],
+    ['an Updated at that is not a timestamp', { updatedAt: 'yesterday' }],
+    ['a Completed at that is not a timestamp', { completedAt: 42 }],
+  ])('rejects a Task with %s', (_, fields) => {
+    expect(importBoard(withFirstTask(fields))).toEqual({ ok: false, error: expect.stringMatching(/task/i) });
+  });
+
+  it('rejects a Task list that holds something other than Tasks', () => {
+    const text = JSON.stringify({ version: 1, board: { tasks: ['Write the spec'], labels: [] } });
     expect(importBoard(text).ok).toBe(false);
+  });
+
+  function withLabels(labels: unknown[]): string {
+    return JSON.stringify({ version: 1, board: { ...fullBoard, labels } });
+  }
+
+  it.each<[string, unknown]>([
+    ['something other than a Label', 'Bug'],
+    ['no id', { name: 'Bug', color: '#d73a49' }],
+    ['no name', { id: 'l1', color: '#d73a49' }],
+    ['a blank name', { id: 'l1', name: ' ', color: '#d73a49' }],
+    ['a color that is not text', { id: 'l1', name: 'Bug', color: 0xd73a49 }],
+  ])('rejects a Label with %s', (_, label) => {
+    expect(importBoard(withLabels([label, fullBoard.labels[1]]))).toEqual({
+      ok: false,
+      error: expect.stringMatching(/label/i),
+    });
+  });
+
+  it('rejects two Labels whose names differ only in case', () => {
+    const text = withLabels([...fullBoard.labels, { id: 'l3', name: 'bug', color: '#000000' }]);
+    expect(importBoard(text)).toEqual({ ok: false, error: expect.stringMatching(/bug/) });
+  });
+
+  it('rejects two Labels with the same id', () => {
+    const text = withLabels([...fullBoard.labels, { id: 'l1', name: 'Other', color: '#000000' }]);
+    expect(importBoard(text).ok).toBe(false);
+  });
+
+  it('rejects two Tasks with the same id', () => {
+    const text = withFirstTask({ id: 't2' });
+    expect(importBoard(text).ok).toBe(false);
+  });
+
+  it('rejects a Task carrying a Label that is not on the Board', () => {
+    const text = withFirstTask({ labelIds: ['l1', 'missing'] });
+    expect(importBoard(text)).toEqual({ ok: false, error: expect.stringMatching(/label/i) });
   });
 });
 
