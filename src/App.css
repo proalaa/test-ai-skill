@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f5f7;
+  --fg: #172b4d;
+  --muted: #5e6c84;
+  --column-bg: #ebecf0;
+  --card-bg: #ffffff;
+  --border: #dfe1e6;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1d2125;
+    --fg: #e1e4e8;
+    --muted: #9fadbc;
+    --column-bg: #2c333a;
+    --card-bg: #22272b;
+    --border: #3b444c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.board {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  overflow-x: auto;
+  min-height: 100vh;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 1 0 280px;
+  min-width: 280px;
+  background: var(--column-bg);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.column-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.column-count {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
