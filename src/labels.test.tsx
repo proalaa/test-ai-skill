@@ -2,15 +2,8 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { task } from './test/boards';
-import { column, openTask, taskModal as modal } from './test/queries';
+import { openTask, taskItem, taskModal as modal } from './test/queries';
 import { renderApp, renderAppWith, type User } from './test/renderApp';
-
-/** The Task's card (`<li>`) in its Column. */
-function taskCard(columnName: string, title: string) {
-  const card = within(column(columnName)).getByText(title).closest('li');
-  if (!card) throw new Error(`No Task card for “${title}”`);
-  return card;
-}
 
 /** The names of the Labels attached to the open Task, read from their remove buttons in the modal. */
 function modalLabelNames() {
@@ -18,8 +11,6 @@ function modalLabelNames() {
     .queryAllByRole('button', { name: /^remove label /i })
     .map((button) => button.getAttribute('aria-label')?.replace(/^remove label /i, ''));
 }
-
-
 
 async function attachLabel(user: User, name: string) {
   await user.type(within(modal()).getByLabelText('Add label'), `${name}{Enter}`);
@@ -34,7 +25,7 @@ describe('Attaching Labels in the task modal', () => {
 
     expect(modalLabelNames()).toEqual(['Bug']);
     expect(within(modal()).getByLabelText('Add label')).toHaveValue('');
-    const chip = within(taskCard('To Do', 'Fix login')).getByText('Bug');
+    const chip = within(taskItem('Fix login', 'To Do')).getByText('Bug');
     expect(chip).toHaveStyle({ backgroundColor: '#0c66e4' });
     expect(saved().labels).toEqual([{ id: expect.any(String), name: 'Bug', color: '#0c66e4' }]);
   });
@@ -49,7 +40,7 @@ describe('Attaching Labels in the task modal', () => {
     await attachLabel(user, 'bUG');
 
     expect(modalLabelNames()).toEqual(['Bug']);
-    expect(within(taskCard('To Do', 'Fix logout')).getByText('Bug')).toHaveStyle({ backgroundColor: '#c9372c' });
+    expect(within(taskItem('Fix logout', 'To Do')).getByText('Bug')).toHaveStyle({ backgroundColor: '#c9372c' });
     expect(saved().labels).toEqual([{ id: 'bug', name: 'Bug', color: '#c9372c' }]);
     expect(saved().tasks.find((t) => t.id === 't2')?.labelIds).toEqual(['bug']);
   });
@@ -64,7 +55,7 @@ describe('Attaching Labels in the task modal', () => {
     await user.click(within(modal()).getByRole('button', { name: /remove label bug/i }));
 
     expect(modalLabelNames()).toEqual([]);
-    expect(within(taskCard('To Do', 'Fix login')).queryByText('Bug')).not.toBeInTheDocument();
+    expect(within(taskItem('Fix login', 'To Do')).queryByText('Bug')).not.toBeInTheDocument();
     expect(saved().labels).toEqual([{ id: 'bug', name: 'Bug', color: '#c9372c' }]);
 
     await attachLabel(user, 'bug');
@@ -108,11 +99,11 @@ describe('Label chips on the Task in its Column', () => {
       ],
     });
 
-    const card = taskCard('To Do', 'Fix login');
-    expect(within(card).getByText('UI')).toHaveStyle({ backgroundColor: '#6e5dc6' });
-    expect(within(card).getByText('Bug')).toHaveStyle({ backgroundColor: '#c9372c' });
-    expect(card.textContent).toBe('Fix loginUIBug');
-    expect(taskCard('Done', 'Release').textContent).toBe('Release');
+    const item = taskItem('Fix login', 'To Do');
+    expect(within(item).getByText('UI')).toHaveStyle({ backgroundColor: '#6e5dc6' });
+    expect(within(item).getByText('Bug')).toHaveStyle({ backgroundColor: '#c9372c' });
+    expect(item.textContent).toBe('Fix loginUIBug');
+    expect(taskItem('Release', 'Done').textContent).toBe('Release');
     expect(screen.queryByText('Docs')).not.toBeInTheDocument();
   });
 
@@ -125,9 +116,9 @@ describe('Label chips on the Task in its Column', () => {
 
     const { user } = renderApp({ store: first.store });
 
-    const card = taskCard('To Do', 'Fix login');
-    expect(within(card).getByText('Bug')).toHaveStyle({ backgroundColor: '#0c66e4' });
-    expect(within(card).getByText('UI')).toHaveStyle({ backgroundColor: '#1f845a' });
+    const item = taskItem('Fix login', 'To Do');
+    expect(within(item).getByText('Bug')).toHaveStyle({ backgroundColor: '#0c66e4' });
+    expect(within(item).getByText('UI')).toHaveStyle({ backgroundColor: '#1f845a' });
     await openTask(user, 'Fix login');
     expect(modalLabelNames()).toEqual(['Bug', 'UI']);
   });

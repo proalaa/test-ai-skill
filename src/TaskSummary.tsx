@@ -25,7 +25,7 @@ export function TaskSummary({ task, today, labels }: TaskSummaryProps) {
   const hasDetails = task.priority !== 'none' || task.dueDate !== null || hasDescription;
   return (
     <>
-      <span className="task-title">{task.title}</span>
+      <h3 className="task-title">{task.title}</h3>
       {hasDetails && (
         <span className="task-details">
           {task.priority !== 'none' && (

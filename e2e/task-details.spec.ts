@@ -47,7 +47,7 @@ test('a Task shows its Priority, Due date and description icon in its Column', a
 
   const late = taskItem(page, 'Late report');
   await expect(late).toContainText('Urgent');
-  await expect(late.locator('time')).toHaveAttribute('datetime', '2026-10-01');
+  await expect(late.getByRole('time')).toHaveAttribute('datetime', '2026-10-01');
   await expect(late.getByRole('img', { name: /has a description/i })).toBeVisible();
 
   const plain = taskItem(page, 'Plain task');
@@ -60,19 +60,19 @@ test('only Overdue Due dates are red: not due today, and never in Done', async (
   await addTaskWith(page, 'In Progress', 'Due today', { dueDate: '2026-10-10' });
   await addTaskWith(page, 'Done', 'Finished late', { dueDate: '2026-10-01' });
 
-  const overdue = taskItem(page, 'Was due last week').locator('.due-date');
-  await expect(overdue).toHaveCSS('color', OVERDUE_RED);
+  const overdue = taskItem(page, 'Was due last week');
+  await expect(overdue.getByRole('time')).toHaveCSS('color', OVERDUE_RED);
   await expect(overdue).toContainText(/overdue/i);
 
   for (const title of ['Due today', 'Finished late']) {
-    const dueDate = taskItem(page, title).locator('.due-date');
+    const dueDate = taskItem(page, title).getByRole('time');
     await expect(dueDate).toBeVisible();
     await expect(dueDate).not.toHaveCSS('color', OVERDUE_RED);
-    await expect(dueDate).not.toContainText(/overdue/i);
+    await expect(taskItem(page, title)).not.toContainText(/overdue/i);
   }
 
   // Still the same after a reload.
   await page.reload();
-  await expect(taskItem(page, 'Was due last week').locator('.due-date')).toHaveCSS('color', OVERDUE_RED);
-  await expect(taskItem(page, 'Finished late').locator('.due-date')).not.toHaveCSS('color', OVERDUE_RED);
+  await expect(taskItem(page, 'Was due last week').getByRole('time')).toHaveCSS('color', OVERDUE_RED);
+  await expect(taskItem(page, 'Finished late').getByRole('time')).not.toHaveCSS('color', OVERDUE_RED);
 });

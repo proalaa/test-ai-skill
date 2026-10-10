@@ -1,10 +1,11 @@
-// App-level tests for what a Task shows in its Column: Priority badge,
+// App-level tests for what a Task shows in its Column (its summary): Priority badge,
 // Due date (and whether it is Overdue) and the description icon.
-import { screen, within } from '@testing-library/react';
+import { within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Task } from './board/board';
 import { task } from './test/boards';
 import { fixedClock } from './test/clocks';
+import { taskItem } from './test/queries';
 import { renderApp, renderAppWith as renderBoard, storeWith } from './test/renderApp';
 
 // 09:00 local time on 10 October 2026: "today" is 2026-10-10 in any time zone.
@@ -13,15 +14,6 @@ const clock = fixedClock(new Date(2026, 9, 10, 9, 0));
 /** Renders the app over a saved Board holding `tasks` and no Labels. */
 function renderAppWith(tasks: Task[]) {
   return renderBoard({ tasks, labels: [] }, { clock });
-}
-
-
-
-/** The Task with the given title, as shown in its Column. */
-function taskCard(title: string) {
-  const card = screen.getAllByRole('listitem').find((item) => within(item).queryByText(title));
-  if (!card) throw new Error(`No Task titled "${title}" on the Board`);
-  return card;
 }
 
 describe('Priority badge', () => {
@@ -34,19 +26,19 @@ describe('Priority badge', () => {
       task({ id: 'u', title: 'Task U', priority: 'urgent', position: 4 }),
     ]);
 
-    expect(taskCard('Task L')).toHaveTextContent(/priority:? low/i);
-    expect(taskCard('Task M')).toHaveTextContent(/priority:? medium/i);
-    expect(taskCard('Task H')).toHaveTextContent(/priority:? high/i);
-    expect(taskCard('Task U')).toHaveTextContent(/priority:? urgent/i);
-    expect(taskCard('Task N')).not.toHaveTextContent(/priority/i);
-    expect(taskCard('Task N')).toHaveTextContent(/^Task N$/);
+    expect(taskItem('Task L')).toHaveTextContent(/priority:? low/i);
+    expect(taskItem('Task M')).toHaveTextContent(/priority:? medium/i);
+    expect(taskItem('Task H')).toHaveTextContent(/priority:? high/i);
+    expect(taskItem('Task U')).toHaveTextContent(/priority:? urgent/i);
+    expect(taskItem('Task N')).not.toHaveTextContent(/priority/i);
+    expect(taskItem('Task N')).toHaveTextContent(/^Task N$/);
   });
 });
 
 describe('Due date', () => {
   /** The Due date shown on the Task, as its `YYYY-MM-DD` value, or null. */
   function shownDueDate(title: string) {
-    return taskCard(title).querySelector('time')?.getAttribute('datetime') ?? null;
+    return within(taskItem(title)).queryByRole('time')?.getAttribute('datetime') ?? null;
   }
 
   it('shows the Due date, and marks it Overdue only when it is before today and the Task is not Done', () => {
@@ -60,31 +52,31 @@ describe('Due date', () => {
     ]);
 
     expect(shownDueDate('Past')).toBe('2026-10-09');
-    expect(taskCard('Past')).toHaveTextContent(/overdue/i);
-    expect(taskCard('Past in progress')).toHaveTextContent(/overdue/i);
+    expect(taskItem('Past')).toHaveTextContent(/overdue/i);
+    expect(taskItem('Past in progress')).toHaveTextContent(/overdue/i);
 
     expect(shownDueDate('Today')).toBe('2026-10-10');
-    expect(taskCard('Today')).not.toHaveTextContent(/overdue/i);
+    expect(taskItem('Today')).not.toHaveTextContent(/overdue/i);
 
     expect(shownDueDate('Future')).toBe('2026-11-03');
-    expect(taskCard('Future')).not.toHaveTextContent(/overdue/i);
+    expect(taskItem('Future')).not.toHaveTextContent(/overdue/i);
 
     expect(shownDueDate('Past but done')).toBe('2026-10-01');
-    expect(taskCard('Past but done')).not.toHaveTextContent(/overdue/i);
+    expect(taskItem('Past but done')).not.toHaveTextContent(/overdue/i);
 
     expect(shownDueDate('No date')).toBeNull();
-    expect(taskCard('No date')).toHaveTextContent(/^No date$/);
+    expect(taskItem('No date')).toHaveTextContent(/^No date$/);
   });
 
   it('takes "today" from the injected clock', () => {
     const store = storeWith({ labels: [], tasks: [task({ id: 'x', title: 'Ship', dueDate: '2026-10-10' })] });
 
     const onTheDay = renderApp({ store, clock: fixedClock(new Date(2026, 9, 10, 23, 59)) });
-    expect(taskCard('Ship')).not.toHaveTextContent(/overdue/i);
+    expect(taskItem('Ship')).not.toHaveTextContent(/overdue/i);
     onTheDay.unmount();
 
     renderApp({ store, clock: fixedClock(new Date(2026, 9, 11, 0, 1)) });
-    expect(taskCard('Ship')).toHaveTextContent(/overdue/i);
+    expect(taskItem('Ship')).toHaveTextContent(/overdue/i);
   });
 });
 
@@ -96,8 +88,8 @@ describe('Description icon', () => {
       task({ id: 'c', title: 'Only spaces', description: '  \n ', position: 2 }),
     ]);
 
-    expect(within(taskCard('With notes')).getByRole('img', { name: /has a description/i })).toBeInTheDocument();
-    expect(within(taskCard('Without notes')).queryByRole('img')).not.toBeInTheDocument();
-    expect(within(taskCard('Only spaces')).queryByRole('img')).not.toBeInTheDocument();
+    expect(within(taskItem('With notes')).getByRole('img', { name: /has a description/i })).toBeInTheDocument();
+    expect(within(taskItem('Without notes')).queryByRole('img')).not.toBeInTheDocument();
+    expect(within(taskItem('Only spaces')).queryByRole('img')).not.toBeInTheDocument();
   });
 });

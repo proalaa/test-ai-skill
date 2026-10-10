@@ -10,25 +10,37 @@ export function addTaskInput(columnName: string) {
   return within(column(columnName)).getByRole('textbox', { name: /add task/i });
 }
 
-/** The title of a Task's `<li>`, without its details or Label chips. */
+/** The Tasks shown in a Column (its list items), top to bottom. */
+function tasksInColumn(columnName: string) {
+  return within(column(columnName)).queryAllByRole('listitem');
+}
+
+/** The title of a Task in its Column (its heading), without its details or Label chips. */
 export function titleOf(item: HTMLElement) {
-  return item.querySelector('.task-title')?.textContent ?? item.textContent;
+  return within(item).getByRole('heading').textContent;
 }
 
 /** The titles of the Tasks in a Column, top to bottom. */
 export function taskTitles(columnName: string) {
-  return within(column(columnName)).queryAllByRole('listitem').map(titleOf);
+  return tasksInColumn(columnName).map(titleOf);
 }
 
 export function taskCount(columnName: string) {
   return within(column(columnName)).getByLabelText('Task count').textContent;
 }
 
-/** The Task in the Board whose title is exactly `title`. */
-export function taskItem(title: string): HTMLElement {
-  const item = screen.getAllByRole('listitem').find((li) => titleOf(li) === title);
-  if (!item) throw new Error(`No Task titled "${title}" on the Board`);
+/** The Task on the Board (or in the named Column) whose title is exactly `title`. */
+export function taskItem(title: string, columnName?: string): HTMLElement {
+  const items = columnName ? tasksInColumn(columnName) : screen.getAllByRole('listitem');
+  const item = items.find((li) => within(li).queryByRole('heading', { name: title }));
+  if (!item) throw new Error(`No Task titled "${title}" ${columnName ? `in ${columnName}` : 'on the Board'}`);
   return item;
+}
+
+/** The Label chips a Task shows in its Column, in order. */
+export function labelChipsOf(title: string): HTMLElement[] {
+  const labels = within(taskItem(title)).queryByRole('group', { name: 'Labels' });
+  return labels ? within(labels).getAllByText(/./) : [];
 }
 
 /** The open task modal. */

@@ -7,9 +7,6 @@ import { manualClock } from './test/clocks';
 import { column, openTask, taskModal as modal, taskTitles } from './test/queries';
 import { renderApp, renderAppWith, type User } from './test/renderApp';
 
-
-
-
 describe('Opening a Task', () => {
   it('shows every field of the clicked Task in a modal', async () => {
     const { user } = renderAppWith({

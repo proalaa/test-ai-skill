@@ -556,6 +556,8 @@ body {
 
 .task-title {
   display: block;
+  margin: 0;
+  font: inherit;
   overflow-wrap: anywhere;
 }
 
