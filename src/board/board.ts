@@ -87,7 +87,7 @@ export function importBoard(text: string): ImportResult {
  * Something the user does to the Board. The caller supplies new ids so the
  * Board module stays deterministic.
  */
-export type BoardAction = AddTask;
+export type BoardAction = AddTask | MoveTask;
 
 export interface AddTask {
   type: 'addTask';
@@ -96,12 +96,56 @@ export interface AddTask {
   title: string;
 }
 
+/**
+ * Moves a Task to `status` so that it ends up at index `position` of that
+ * Column (0 = top), counted after the Task has left its old place.
+ */
+export interface MoveTask {
+  type: 'moveTask';
+  id: string;
+  status: StatusId;
+  position: number;
+}
+
 /** The Board after `action` was applied at time `now`. Never mutates `board`. */
 export function applyAction(board: Board, action: BoardAction, now: Date): Board {
   switch (action.type) {
     case 'addTask':
       return addTask(board, action, now);
+    case 'moveTask':
+      return moveTask(board, action, now);
   }
+}
+
+/**
+ * Moves a Task to a Status and position, renumbering both affected Columns so
+ * positions stay 0..n-1. A move to where the Task already is changes nothing.
+ */
+function moveTask(board: Board, { id, status, position }: MoveTask, now: Date): Board {
+  const task = board.tasks.find((t) => t.id === id);
+  if (!task) return board;
+
+  const target = tasksIn(board, status).filter((t) => t.id !== id);
+  const index = Math.max(0, Math.min(Math.trunc(position), target.length));
+  if (task.status === status && task.position === index) return board;
+
+  const timestamp = now.toISOString();
+  const moved: Task = { ...task, status, updatedAt: timestamp, completedAt: completedAtAfterMove(task, status, timestamp) };
+  target.splice(index, 0, moved);
+
+  const renumbered = new Map<string, Task>();
+  const renumber = (tasks: Task[]) =>
+    tasks.forEach((t, i) => renumbered.set(t.id, t.position === i && t !== moved ? t : { ...t, position: i }));
+  renumber(target);
+  if (task.status !== status) renumber(tasksIn(board, task.status).filter((t) => t.id !== id));
+
+  return { ...board, tasks: board.tasks.map((t) => renumbered.get(t.id) ?? t) };
+}
+
+/** Entering Done records Completed at; leaving Done clears it; otherwise it is kept. */
+function completedAtAfterMove(task: Task, status: StatusId, now: Timestamp): Timestamp | null {
+  if (status !== 'done') return null;
+  return task.status === 'done' ? task.completedAt : now;
 }
 
 /** Adds a Task at the bottom of its Column. A blank title adds nothing. */
