@@ -87,7 +87,7 @@ export function importBoard(text: string): ImportResult {
  * Something the user does to the Board. The caller supplies new ids so the
  * Board module stays deterministic.
  */
-export type BoardAction = AddTask;
+export type BoardAction = AddTask | UpdateTask | DeleteTask;
 
 export interface AddTask {
   type: 'addTask';
@@ -96,11 +96,29 @@ export interface AddTask {
   title: string;
 }
 
+/** The Task fields the user edits directly (in the task modal). */
+export type TaskChanges = Partial<Pick<Task, 'title' | 'description' | 'priority' | 'dueDate'>>;
+
+export interface UpdateTask {
+  type: 'updateTask';
+  id: string;
+  changes: TaskChanges;
+}
+
+export interface DeleteTask {
+  type: 'deleteTask';
+  id: string;
+}
+
 /** The Board after `action` was applied at time `now`. Never mutates `board`. */
 export function applyAction(board: Board, action: BoardAction, now: Date): Board {
   switch (action.type) {
     case 'addTask':
       return addTask(board, action, now);
+    case 'updateTask':
+      return updateTask(board, action, now);
+    case 'deleteTask':
+      return deleteTask(board, action);
   }
 }
 
@@ -123,6 +141,38 @@ function addTask(board: Board, { id, status, title }: AddTask, now: Date): Board
     completedAt: null,
   };
   return { ...board, tasks: [...board.tasks, task] };
+}
+
+/**
+ * Changes a Task's editable fields and stamps its Updated at. The title is
+ * trimmed; a blank title keeps the previous one. If no field actually changes,
+ * the Board is returned unchanged.
+ */
+function updateTask(board: Board, { id, changes }: UpdateTask, now: Date): Board {
+  const task = board.tasks.find((t) => t.id === id);
+  if (!task) return board;
+
+  const { title, ...rest } = changes;
+  const accepted: TaskChanges = { ...rest };
+  if (title !== undefined && title.trim() !== '') accepted.title = title.trim();
+
+  const changed = (Object.keys(accepted) as (keyof TaskChanges)[]).some((field) => accepted[field] !== task[field]);
+  if (!changed) return board;
+
+  const updated: Task = { ...task, ...accepted, updatedAt: now.toISOString() };
+  return { ...board, tasks: board.tasks.map((t) => (t.id === id ? updated : t)) };
+}
+
+/** Removes a Task for good; the Tasks below it in its Column move up. */
+function deleteTask(board: Board, { id }: DeleteTask): Board {
+  const task = board.tasks.find((t) => t.id === id);
+  if (!task) return board;
+  return {
+    ...board,
+    tasks: board.tasks
+      .filter((t) => t.id !== id)
+      .map((t) => (t.status === task.status && t.position > task.position ? { ...t, position: t.position - 1 } : t)),
+  };
 }
 
 /** The Tasks with the given Status, in Column order (top first). */
