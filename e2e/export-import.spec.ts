@@ -1,22 +1,12 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { addTask, column } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 });
-
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
-
-async function addTask(page: Page, columnName: string, title: string) {
-  const input = column(page, columnName).getByRole('textbox', { name: /add task/i });
-  await input.fill(title);
-  await input.press('Enter');
-  await expect(input).toHaveValue('');
-}
 
 test('exporting the Board and importing the file restores it exactly', async ({ page }) => {
   await addTask(page, 'To Do', 'Write spec');

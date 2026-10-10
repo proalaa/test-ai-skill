@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { column, taskItem } from './support';
 
 test.use({ colorScheme: 'light' });
 
@@ -11,14 +12,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 const OVERDUE_RED = 'rgb(201, 55, 44)';
-
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
-
-function taskItem(page: Page, title: string) {
-  return page.getByRole('listitem').filter({ hasText: title });
-}
 
 /** Quick-adds a Task, then sets details in its modal and closes it. */
 async function addTaskWith(

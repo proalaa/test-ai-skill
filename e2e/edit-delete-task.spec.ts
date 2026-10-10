@@ -1,31 +1,11 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { addTask, column, openTask, taskModal } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 });
-
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
-
-function modal(page: Page) {
-  return page.getByRole('dialog', { name: /task details/i });
-}
-
-async function addTask(page: Page, columnName: string, title: string) {
-  const input = column(page, columnName).getByRole('textbox', { name: /add task/i });
-  await input.fill(title);
-  await input.press('Enter');
-  await expect(input).toHaveValue('');
-}
-
-async function openTask(page: Page, title: string) {
-  await page.getByRole('listitem').filter({ hasText: title }).click();
-  await expect(modal(page)).toBeVisible();
-  return modal(page);
-}
 
 test('edits made in the modal save as they happen and survive a reload', async ({ page }) => {
   await addTask(page, 'To Do', 'Draft');
@@ -44,7 +24,7 @@ test('edits made in the modal save as they happen and survive a reload', async (
   await expect(dialog.getByLabel('Title')).toHaveValue('Write the release notes');
 
   await page.keyboard.press('Escape');
-  await expect(modal(page)).toHaveCount(0);
+  await expect(taskModal(page)).toHaveCount(0);
 
   await page.reload();
 
@@ -71,12 +51,12 @@ test('deleting a Task asks first, then removes it for good', async ({ page }) =>
   const confirmation = page.getByRole('alertdialog', { name: /delete this task/i });
   await confirmation.getByRole('button', { name: /cancel/i }).click();
   await expect(confirmation).toHaveCount(0);
-  await expect(modal(page)).toBeVisible();
+  await expect(taskModal(page)).toBeVisible();
   await expect(count).toHaveText('2');
 
   await dialog.getByRole('button', { name: /delete task/i }).click();
   await confirmation.getByRole('button', { name: /^delete$/i }).click();
-  await expect(modal(page)).toHaveCount(0);
+  await expect(taskModal(page)).toHaveCount(0);
   await expect(column(page, 'In Progress').getByRole('listitem')).toHaveText(['Keep']);
   await expect(count).toHaveText('1');
 

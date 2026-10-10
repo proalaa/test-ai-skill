@@ -1,18 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { addTask, taskItem, taskModal } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 });
-
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
-
-function taskModal(page: Page) {
-  return page.getByRole('dialog', { name: /task details/i });
-}
 
 function manageLabels(page: Page) {
   return page.getByRole('dialog', { name: /manage labels/i });
@@ -22,21 +15,9 @@ function labelRow(page: Page, name: string) {
   return manageLabels(page).getByRole('listitem', { name, exact: true });
 }
 
-/** A Task in its Column, by its title heading. */
-function taskItem(page: Page, title: string) {
-  return page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
-}
-
 /** The Label chips a Task shows in its Column. */
 function labelChips(page: Page, title: string) {
   return taskItem(page, title).getByRole('group', { name: 'Labels' });
-}
-
-async function addTask(page: Page, columnName: string, title: string) {
-  const input = column(page, columnName).getByRole('textbox', { name: /add task/i });
-  await input.fill(title);
-  await input.press('Enter');
-  await expect(input).toHaveValue('');
 }
 
 async function attachLabels(page: Page, title: string, ...names: string[]) {
