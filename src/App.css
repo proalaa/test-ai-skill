@@ -1,0 +1,614 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f5f7;
+  --fg: #172b4d;
+  --muted: #5e6c84;
+  --column-bg: #ebecf0;
+  --task-bg: #ffffff;
+  --border: #dfe1e6;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1d2125;
+    --fg: #e1e4e8;
+    --muted: #9fadbc;
+    --column-bg: #2c333a;
+    --task-bg: #22272b;
+    --border: #3b444c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.board {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  overflow-x: auto;
+  min-height: 100vh;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 1 0 280px;
+  min-width: 280px;
+  background: var(--column-bg);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.column-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.column-count {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.column-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task {
+  background: var(--task-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: grab;
+  /* Lets dnd-kit's pointer sensor handle touch drags instead of scrolling. */
+  touch-action: none;
+}
+
+.task:focus-visible {
+  outline: 2px solid #4c9aff;
+  outline-offset: 1px;
+}
+
+.task-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.quick-add {
+  margin-top: 8px;
+}
+
+.quick-add-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+}
+
+.quick-add-input::placeholder {
+  color: var(--muted);
+}
+
+.quick-add-input:hover,
+.quick-add-input:focus {
+  background: var(--task-bg);
+  border-color: var(--border);
+}
+
+/* App header with the export/import controls. */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px 0;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.board-transfer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.button,
+.dialog button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--task-bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.button:focus-within,
+.dialog button:focus-visible {
+  outline: 2px solid #4c9aff;
+  outline-offset: 1px;
+}
+
+.dialog button.danger,
+.button.button-danger {
+  background: #c9372c;
+  border-color: #c9372c;
+  color: #ffffff;
+}
+
+.import-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: #c9372c;
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.load-problem {
+  margin: 0 1.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c9372c;
+  border-radius: 6px;
+  color: #c9372c;
+  font-size: 0.875rem;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Confirmation dialog. */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.45);
+  z-index: 10;
+}
+
+.dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: 8px;
+  background: var(--task-bg);
+  color: var(--fg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+.dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Task modal (ticket 04) */
+
+.task {
+  cursor: pointer;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 16px 16px;
+  background: rgb(9 30 66 / 0.54);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--task-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal:focus {
+  outline: none;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.field input,
+.field textarea,
+.field select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field .task-title-input {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.due-date-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.due-date-control .link-button {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.due-date-control .link-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.timestamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.timestamps dt {
+  color: var(--muted);
+}
+
+.timestamps dd {
+  margin: 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.icon-button {
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--column-bg);
+}
+
+/* Labels (ticket 06) */
+
+.label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task .label-chips {
+  margin-top: 6px;
+}
+
+/* Palette colors are mid-dark, so white text stays readable in both themes. */
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.label-chip-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.label-chip-remove:hover,
+.label-chip-remove:focus-visible {
+  opacity: 1;
+}
+
+.task-labels-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-add {
+  display: flex;
+  flex: 1 1 160px;
+}
+
+.label-add input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Manage labels screen (ticket 07) */
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.manage-labels .modal-header {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.manage-labels h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.label-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Two lines: chip and name (plus any error), then colors, usage and Delete. */
+.label-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas:
+    'chip name name name'
+    'error error error error'
+    'colors colors usage delete';
+  align-items: center;
+  column-gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.label-row .label-chip {
+  grid-area: chip;
+  justify-self: start;
+}
+
+.label-rename {
+  grid-area: name;
+  display: flex;
+}
+
+.label-rename input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.label-rename input[aria-invalid='true'] {
+  border-color: var(--overdue);
+}
+
+.label-error {
+  grid-area: error;
+  margin: 4px 0 0;
+  color: var(--overdue);
+  font-size: 0.8125rem;
+}
+
+.label-colors {
+  grid-area: colors;
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Each palette color is a round swatch; the picked one gets a ring. */
+.label-color {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.label-color:checked {
+  box-shadow: 0 0 0 2px var(--task-bg), 0 0 0 4px var(--fg);
+}
+
+.label-color:focus-visible {
+  outline: 2px solid #4c9aff;
+  outline-offset: 3px;
+}
+
+.label-usage {
+  grid-area: usage;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.label-row > .button {
+  grid-area: delete;
+  margin-top: 10px;
+}
+
+/* Task details in the Column (ticket 05) */
+
+.task-title {
+  display: block;
+  margin: 0;
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.task-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.priority-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.priority-low {
+  background: #6b778c;
+}
+
+.priority-medium {
+  background: #0c66e4;
+}
+
+.priority-high {
+  background: #c25100;
+}
+
+.priority-urgent {
+  background: #ae2e24;
+}
+
+.due-date.overdue {
+  color: var(--overdue);
+  font-weight: 600;
+}
+
+.description-icon {
+  display: inline-flex;
+}
+
+:root {
+  --overdue: #c9372c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --overdue: #f87168;
+  }
+}

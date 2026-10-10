@@ -6,13 +6,15 @@
 
 **Blocked by:** 02 (Add a Task and keep it after reload)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Dragging moves a Task across Columns and reorders it within a Column, landing at the drop position.
-- [ ] Keyboard alone can pick up, move and drop a Task within and across Columns.
-- [ ] A Task can move from any Status to any other, including Done back to To Do.
-- [ ] Completed at is set on entering Done, cleared on leaving, and set fresh on re-entering.
-- [ ] Column counts update after every move; order and Status survive a reload.
-- [ ] Board module tests cover moves, positions and Completed at; app-level Testing Library tests drive moves via the keyboard; Playwright tests cover drag across Columns and reorder within a Column.
+- [x] Dragging moves a Task across Columns and reorders it within a Column, landing at the drop position.
+- [x] Keyboard alone can pick up, move and drop a Task within and across Columns.
+- [x] A Task can move from any Status to any other, including Done back to To Do.
+- [x] Completed at is set on entering Done, cleared on leaving, and set fresh on re-entering.
+- [x] Column counts update after every move; order and Status survive a reload.
+- [x] Board module tests cover moves, positions and Completed at; app-level Testing Library tests drive moves via the keyboard; Playwright tests cover drag across Columns and reorder within a Column.
 
 ## Comments
+
+**2026-10-10 (implement-spec):** Resolved on integration branch `task-board-phase-1`. Merged as 0c8d17e (Merge ticket 03); review fixes in 927b86a. All Vitest, typecheck and Playwright suites pass at 927b86a.
