@@ -83,6 +83,48 @@ export function importBoard(text: string): ImportResult {
   return { ok: true, board: board as Board };
 }
 
+/**
+ * Something the user does to the Board. The caller supplies new ids so the
+ * Board module stays deterministic.
+ */
+export type BoardAction = AddTask;
+
+export interface AddTask {
+  type: 'addTask';
+  id: string;
+  status: StatusId;
+  title: string;
+}
+
+/** The Board after `action` was applied at time `now`. Never mutates `board`. */
+export function applyAction(board: Board, action: BoardAction, now: Date): Board {
+  switch (action.type) {
+    case 'addTask':
+      return addTask(board, action, now);
+  }
+}
+
+/** Adds a Task at the bottom of its Column. A blank title adds nothing. */
+function addTask(board: Board, { id, status, title }: AddTask, now: Date): Board {
+  const trimmed = title.trim();
+  if (trimmed === '') return board;
+  const timestamp = now.toISOString();
+  const task: Task = {
+    id,
+    title: trimmed,
+    description: '',
+    status,
+    position: tasksIn(board, status).length,
+    priority: 'none',
+    dueDate: null,
+    labelIds: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    completedAt: null,
+  };
+  return { ...board, tasks: [...board.tasks, task] };
+}
+
 /** The Tasks with the given Status, in Column order (top first). */
 export function tasksIn(board: Board, status: StatusId): Task[] {
   return board.tasks
