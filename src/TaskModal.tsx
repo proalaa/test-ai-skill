@@ -1,7 +1,8 @@
 import { useId, useRef, useState } from 'react';
-import type { Priority, Task, TaskChanges, Timestamp } from './board/board';
+import type { Board, Priority, Task, TaskChanges, Timestamp } from './board/board';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
+import { TaskLabels } from './TaskLabels';
 import type { Dispatch } from './useBoard';
 
 const PRIORITY_NAMES: Record<Priority, string> = {
@@ -14,6 +15,8 @@ const PRIORITY_NAMES: Record<Priority, string> = {
 
 interface TaskModalProps {
   task: Task;
+  /** The whole Board, for the Labels field. */
+  board: Board;
   dispatch: Dispatch;
   onClose: () => void;
 }
@@ -22,7 +25,7 @@ interface TaskModalProps {
  * The modal showing every field of one Task. Every edit is dispatched straight
  * away (autosave); there is no Save or Cancel.
  */
-export function TaskModal({ task, dispatch, onClose }: TaskModalProps) {
+export function TaskModal({ task, board, dispatch, onClose }: TaskModalProps) {
   const id = useId();
   // The title as typed. It can be blank while editing; the Board never stores a blank title.
   const [title, setTitle] = useState(task.title);
@@ -114,6 +117,7 @@ export function TaskModal({ task, dispatch, onClose }: TaskModalProps) {
           </div>
         </div>
       </div>
+      <TaskLabels task={task} board={board} dispatch={dispatch} />
       <dl className="timestamps">
         <TimestampItem id={`${id}-created`} label="Created at" value={task.createdAt} />
         <TimestampItem id={`${id}-updated`} label="Updated at" value={task.updatedAt} />

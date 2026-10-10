@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { STATUSES, tasksIn, type Board, type Status } from './board/board';
+import { STATUSES, labelsOf, tasksIn, type Board, type Status } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
+import { LabelChips } from './LabelChip';
 import type { BoardStorage } from './storage/boardStorage';
 import { TaskModal } from './TaskModal';
 import { useBoard, type Dispatch } from './useBoard';
@@ -40,7 +41,9 @@ export function App({ storage, clock }: AppProps) {
           />
         ))}
       </main>
-      {openTask && <TaskModal key={openTask.id} task={openTask} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />}
+      {openTask && (
+        <TaskModal key={openTask.id} task={openTask} board={board} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />
+      )}
     </>
   );
 }
@@ -68,6 +71,7 @@ function Column({ status, board, dispatch, showHint, onOpenTask }: ColumnProps) 
         {tasks.map((task) => (
           <li key={task.id} className="task" onClick={() => onOpenTask(task.id)}>
             {task.title}
+            <LabelChips labels={labelsOf(board, task)} />
           </li>
         ))}
       </ul>

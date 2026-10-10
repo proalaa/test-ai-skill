@@ -346,6 +346,11 @@ function findLabelByName(board: Board, name: string): Label | undefined {
   return board.labels.find((label) => label.name.toLowerCase() === key);
 }
 
+/** The Labels a Task carries, in the order they were attached. */
+export function labelsOf(board: Board, task: Task): Label[] {
+  return task.labelIds.flatMap((id) => board.labels.find((label) => label.id === id) ?? []);
+}
+
 /** The Tasks with the given Status, in Column order (top first). */
 export function tasksIn(board: Board, status: StatusId): Task[] {
   return board.tasks
