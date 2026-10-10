@@ -148,7 +148,8 @@ body {
   outline-offset: 1px;
 }
 
-.dialog button.danger {
+.dialog button.danger,
+.button.button-danger {
   background: #c9372c;
   border-color: #c9372c;
   color: #ffffff;
@@ -200,6 +201,10 @@ body {
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
 }
 
+.dialog:focus {
+  outline: none;
+}
+
 .dialog h2 {
   margin: 0 0 8px;
   font-size: 1.125rem;
@@ -210,4 +215,139 @@ body {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* Task modal (ticket 04) */
+
+.task {
+  cursor: pointer;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 8vh 16px 16px;
+  background: rgb(9 30 66 / 0.54);
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--card-bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal:focus {
+  outline: none;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.field input,
+.field textarea,
+.field select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field .task-title-input {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.field-row {
+  display: flex;
+  gap: 16px;
+}
+
+.due-date-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.due-date-control .link-button {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.due-date-control .link-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.timestamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
+.timestamps dt {
+  color: var(--muted);
+}
+
+.timestamps dd {
+  margin: 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.icon-button {
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--column-bg);
 }

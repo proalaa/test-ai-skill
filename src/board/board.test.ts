@@ -198,3 +198,125 @@ describe('Adding a Task', () => {
     expect(board.tasks[0].title).toBe('Buy milk');
   });
 });
+
+describe('Updating a Task', () => {
+  const created = new Date('2026-10-10T09:00:00.000Z');
+  const later = new Date('2026-10-11T14:30:00.000Z');
+
+  function boardWithTask(): Board {
+    return applyAction(emptyBoard(), { type: 'addTask', id: 't1', status: 'todo', title: 'Write tests' }, created);
+  }
+
+  it('changes the title, description, Priority and Due date and stamps Updated at with now', () => {
+    const board = applyAction(
+      boardWithTask(),
+      {
+        type: 'updateTask',
+        id: 't1',
+        changes: { title: 'Write more tests', description: 'Line one\nLine two', priority: 'high', dueDate: '2026-10-20' },
+      },
+      later,
+    );
+
+    expect(board.tasks).toEqual([
+      {
+        id: 't1',
+        title: 'Write more tests',
+        description: 'Line one\nLine two',
+        status: 'todo',
+        position: 0,
+        priority: 'high',
+        dueDate: '2026-10-20',
+        labelIds: [],
+        createdAt: '2026-10-10T09:00:00.000Z',
+        updatedAt: '2026-10-11T14:30:00.000Z',
+        completedAt: null,
+      },
+    ]);
+  });
+
+  it.each(['', '   ', '\n\t'])('keeps the previous title when the update would empty it (%j), leaving the Board unchanged', (title) => {
+    const before = boardWithTask();
+    const after = applyAction(before, { type: 'updateTask', id: 't1', changes: { title } }, later);
+    expect(after).toBe(before);
+  });
+
+  it('keeps the previous title but applies the other changes when the title would be emptied', () => {
+    const board = applyAction(
+      boardWithTask(),
+      { type: 'updateTask', id: 't1', changes: { title: ' ', priority: 'low' } },
+      later,
+    );
+    expect(board.tasks[0]).toMatchObject({ title: 'Write tests', priority: 'low', updatedAt: '2026-10-11T14:30:00.000Z' });
+  });
+
+  it('trims surrounding whitespace from a new title', () => {
+    const board = applyAction(boardWithTask(), { type: 'updateTask', id: 't1', changes: { title: '  Ship it \n' } }, later);
+    expect(board.tasks[0].title).toBe('Ship it');
+  });
+
+  it('clears the Due date', () => {
+    let board = applyAction(boardWithTask(), { type: 'updateTask', id: 't1', changes: { dueDate: '2026-10-20' } }, later);
+    board = applyAction(board, { type: 'updateTask', id: 't1', changes: { dueDate: null } }, later);
+    expect(board.tasks[0].dueDate).toBeNull();
+  });
+
+  it('changes Updated at on every edit', () => {
+    let board = boardWithTask();
+    board = applyAction(board, { type: 'updateTask', id: 't1', changes: { description: 'a' } }, new Date('2026-10-11T10:00:00.000Z'));
+    expect(board.tasks[0].updatedAt).toBe('2026-10-11T10:00:00.000Z');
+    board = applyAction(board, { type: 'updateTask', id: 't1', changes: { priority: 'urgent' } }, new Date('2026-10-12T11:00:00.000Z'));
+    expect(board.tasks[0].updatedAt).toBe('2026-10-12T11:00:00.000Z');
+    expect(board.tasks[0].createdAt).toBe('2026-10-10T09:00:00.000Z');
+  });
+
+  it('leaves the Board unchanged (and Updated at alone) when nothing actually changes', () => {
+    const before = boardWithTask();
+    const after = applyAction(
+      before,
+      { type: 'updateTask', id: 't1', changes: { title: 'Write tests', description: '', priority: 'none', dueDate: null } },
+      later,
+    );
+    expect(after).toBe(before);
+  });
+
+  it('leaves the Board unchanged for an unknown Task', () => {
+    const before = boardWithTask();
+    expect(applyAction(before, { type: 'updateTask', id: 'nope', changes: { title: 'X' } }, later)).toBe(before);
+  });
+
+  it('does not touch other Tasks', () => {
+    const before = applyAction(boardWithTask(), { type: 'addTask', id: 't2', status: 'todo', title: 'Other' }, created);
+    const after = applyAction(before, { type: 'updateTask', id: 't1', changes: { priority: 'low' } }, later);
+    expect(after.tasks.find((t) => t.id === 't2')).toBe(before.tasks.find((t) => t.id === 't2'));
+  });
+});
+
+describe('Deleting a Task', () => {
+  const now = new Date('2026-10-10T09:00:00.000Z');
+
+  function boardWithTasks(): Board {
+    let board = emptyBoard();
+    board = applyAction(board, { type: 'addTask', id: 'a', status: 'todo', title: 'A' }, now);
+    board = applyAction(board, { type: 'addTask', id: 'b', status: 'todo', title: 'B' }, now);
+    board = applyAction(board, { type: 'addTask', id: 'c', status: 'todo', title: 'C' }, now);
+    board = applyAction(board, { type: 'addTask', id: 'd', status: 'done', title: 'D' }, now);
+    return board;
+  }
+
+  it('removes the Task permanently and closes the gap in its Column', () => {
+    const board = applyAction(boardWithTasks(), { type: 'deleteTask', id: 'b' }, now);
+
+    expect(board.tasks.find((t) => t.id === 'b')).toBeUndefined();
+    expect(tasksIn(board, 'todo').map((t) => [t.title, t.position])).toEqual([
+      ['A', 0],
+      ['C', 1],
+    ]);
+    expect(tasksIn(board, 'done').map((t) => [t.title, t.position])).toEqual([['D', 0]]);
+  });
+
+  it('leaves the Board unchanged for an unknown Task', () => {
+    const before = boardWithTasks();
+    expect(applyAction(before, { type: 'deleteTask', id: 'nope' }, now)).toBe(before);
+  });
+});

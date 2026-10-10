@@ -3,6 +3,7 @@ import { STATUSES, tasksIn, type Board, type Status } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
 import type { BoardStorage } from './storage/boardStorage';
+import { TaskModal } from './TaskModal';
 import { useBoard, type Dispatch } from './useBoard';
 import './App.css';
 
@@ -17,7 +18,9 @@ export interface AppProps {
  */
 export function App({ storage, clock }: AppProps) {
   const [board, dispatch, replaceBoard] = useBoard(storage, clock);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const boardIsEmpty = board.tasks.length === 0;
+  const openTask = board.tasks.find((task) => task.id === openTaskId);
 
   return (
     <>
@@ -33,9 +36,11 @@ export function App({ storage, clock }: AppProps) {
             board={board}
             dispatch={dispatch}
             showHint={boardIsEmpty && status.id === 'todo'}
+            onOpenTask={setOpenTaskId}
           />
         ))}
       </main>
+      {openTask && <TaskModal key={openTask.id} task={openTask} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />}
     </>
   );
 }
@@ -45,9 +50,10 @@ interface ColumnProps {
   board: Board;
   dispatch: Dispatch;
   showHint: boolean;
+  onOpenTask: (id: string) => void;
 }
 
-function Column({ status, board, dispatch, showHint }: ColumnProps) {
+function Column({ status, board, dispatch, showHint, onOpenTask }: ColumnProps) {
   const tasks = tasksIn(board, status.id);
   return (
     <section className="column" aria-label={status.name}>
@@ -60,7 +66,7 @@ function Column({ status, board, dispatch, showHint }: ColumnProps) {
       {showHint && <p className="empty-hint">No tasks yet. Type a title in “+ Add task” below and press Enter.</p>}
       <ul className="task-list">
         {tasks.map((task) => (
-          <li key={task.id} className="task">
+          <li key={task.id} className="task" onClick={() => onOpenTask(task.id)}>
             {task.title}
           </li>
         ))}
