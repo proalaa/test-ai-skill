@@ -1,4 +1,5 @@
-import { isOverdue, type LocalDate, type Priority, type Task } from './board/board';
+import { isOverdue, labelsOf, type Label, type LocalDate, type Priority, type Task } from './board/board';
+import { LabelChips } from './LabelChip';
 
 const PRIORITY_NAMES: Record<Exclude<Priority, 'none'>, string> = {
   low: 'Low',
@@ -11,13 +12,15 @@ export interface TaskCardProps {
   task: Task;
   /** The user's local date, from the injected clock. Decides Overdue. */
   today: LocalDate;
+  /** Every Label on the Board; the Task's own are shown as chips. */
+  labels: Label[];
 }
 
 /**
- * What a Task shows inside its Column item: the title, then a row of details.
- * Timestamps are deliberately left out; they live in the Task modal.
+ * What a Task shows inside its Column item: the title, a row of details, then
+ * its Label chips. Timestamps are deliberately left out; they live in the Task modal.
  */
-export function TaskCard({ task, today }: TaskCardProps) {
+export function TaskCard({ task, today, labels }: TaskCardProps) {
   const hasDescription = task.description.trim() !== '';
   const hasDetails = task.priority !== 'none' || task.dueDate !== null || hasDescription;
   return (
@@ -35,6 +38,7 @@ export function TaskCard({ task, today }: TaskCardProps) {
           {hasDescription && <DescriptionIcon />}
         </span>
       )}
+      <LabelChips labels={labelsOf({ labels }, task)} />
     </>
   );
 }

@@ -2,17 +2,8 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { exportBoard, type Board } from './board/board';
 import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
+import { taskTitles } from './test/queries';
 import { renderApp } from './test/renderApp';
-
-function column(name: string) {
-  return screen.getByRole('region', { name });
-}
-
-function taskTitles(columnName: string) {
-  return within(column(columnName))
-    .queryAllByRole('listitem')
-    .map((item) => item.textContent);
-}
 
 function task(id: string, title: string, status: Board['tasks'][number]['status'], position: number) {
   return {

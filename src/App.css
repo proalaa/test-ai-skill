@@ -365,6 +365,70 @@ body {
   background: var(--column-bg);
 }
 
+/* Labels (ticket 06) */
+
+.label-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task .label-chips {
+  margin-top: 6px;
+}
+
+/* Palette colors are mid-dark, so white text stays readable in both themes. */
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  padding: 1px 8px;
+  border-radius: 10px;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.label-chip-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1;
+  padding: 0 0 0 2px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.label-chip-remove:hover,
+.label-chip-remove:focus-visible {
+  opacity: 1;
+}
+
+.task-labels-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-add {
+  display: flex;
+  flex: 1 1 160px;
+}
+
+.label-add input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Task details in the Column (ticket 05) */
 
 .task-title {

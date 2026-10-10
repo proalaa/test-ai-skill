@@ -191,7 +191,7 @@ function checkConsistency({ tasks, labels }: Board): void {
  * Something the user does to the Board. The caller supplies new ids so the
  * Board module stays deterministic.
  */
-export type BoardAction = AddTask | MoveTask | UpdateTask | DeleteTask;
+export type BoardAction = AddTask | MoveTask | UpdateTask | DeleteTask | AttachLabel | DetachLabel;
 
 export interface AddTask {
   type: 'addTask';
@@ -225,6 +225,36 @@ export interface DeleteTask {
   id: string;
 }
 
+/**
+ * Attaches the Label called `name` (ignoring case) to a Task, creating it with
+ * id `newLabelId` when the Board has no Label of that name.
+ */
+export interface AttachLabel {
+  type: 'attachLabel';
+  taskId: string;
+  name: string;
+  newLabelId: string;
+}
+
+/** Removes a Label from one Task. The Label stays on the Board. */
+export interface DetachLabel {
+  type: 'detachLabel';
+  taskId: string;
+  labelId: string;
+}
+
+/** The fixed palette new Labels take their color from, in order. */
+export const LABEL_COLORS: readonly string[] = [
+  '#0c66e4', // blue
+  '#1f845a', // green
+  '#b65c02', // orange
+  '#6e5dc6', // purple
+  '#c9372c', // red
+  '#227d9b', // teal
+  '#ae4787', // magenta
+  '#626f86', // gray
+];
+
 /** The Board after `action` was applied at time `now`. Never mutates `board`. */
 export function applyAction(board: Board, action: BoardAction, now: Date): Board {
   switch (action.type) {
@@ -236,6 +266,10 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
       return updateTask(board, action, now);
     case 'deleteTask':
       return deleteTask(board, action);
+    case 'attachLabel':
+      return attachLabel(board, action, now);
+    case 'detachLabel':
+      return detachLabel(board, action, now);
   }
 }
 
@@ -321,6 +355,44 @@ function deleteTask(board: Board, { id }: DeleteTask): Board {
       .filter((t) => t.id !== id)
       .map((t) => (t.status === task.status && t.position > task.position ? { ...t, position: t.position - 1 } : t)),
   };
+}
+
+/** Attaches a Label by name to a Task, creating the Label when the name is new. */
+function attachLabel(board: Board, { taskId, name, newLabelId }: AttachLabel, now: Date): Board {
+  const task = board.tasks.find((t) => t.id === taskId);
+  const trimmed = name.trim();
+  if (!task || trimmed === '') return board;
+  const existing = findLabelByName(board, trimmed);
+  if (existing && task.labelIds.includes(existing.id)) return board;
+  const label: Label = existing ?? { id: newLabelId, name: trimmed, color: nextLabelColor(board) };
+  const labels = existing ? board.labels : [...board.labels, label];
+  const updated: Task = { ...task, labelIds: [...task.labelIds, label.id], updatedAt: now.toISOString() };
+  return { labels, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
+}
+
+/** Removes a Label from one Task; the Label itself stays on the Board for reuse. */
+function detachLabel(board: Board, { taskId, labelId }: DetachLabel, now: Date): Board {
+  const task = board.tasks.find((t) => t.id === taskId);
+  if (!task || !task.labelIds.includes(labelId)) return board;
+  const updated: Task = { ...task, labelIds: task.labelIds.filter((id) => id !== labelId), updatedAt: now.toISOString() };
+  return { ...board, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
+}
+
+/** The palette color the fewest Labels use; the earliest in the palette on a tie. */
+function nextLabelColor(board: Board): string {
+  const uses = (color: string) => board.labels.filter((label) => label.color === color).length;
+  return LABEL_COLORS.reduce((best, color) => (uses(color) < uses(best) ? color : best));
+}
+
+/** The Label with the given name, ignoring case, if the Board has one. */
+function findLabelByName(board: Board, name: string): Label | undefined {
+  const key = name.toLowerCase();
+  return board.labels.find((label) => label.name.toLowerCase() === key);
+}
+
+/** The Labels a Task carries, in the order they were attached. */
+export function labelsOf(board: Pick<Board, 'labels'>, task: Task): Label[] {
+  return task.labelIds.flatMap((id) => board.labels.find((label) => label.id === id) ?? []);
 }
 
 /** The local calendar date of `date` (in the user's time zone), as `YYYY-MM-DD`. */

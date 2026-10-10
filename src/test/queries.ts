@@ -10,11 +10,14 @@ export function addTaskInput(columnName: string) {
   return within(column(columnName)).getByRole('textbox', { name: /add task/i });
 }
 
+/** The title of a Task's `<li>`, without its details or Label chips. */
+export function titleOf(item: HTMLElement) {
+  return item.querySelector('.task-title')?.textContent ?? item.textContent;
+}
+
 /** The titles of the Tasks in a Column, top to bottom. */
 export function taskTitles(columnName: string) {
-  return within(column(columnName))
-    .queryAllByRole('listitem')
-    .map((item) => item.textContent);
+  return within(column(columnName)).queryAllByRole('listitem').map(titleOf);
 }
 
 export function taskCount(columnName: string) {
@@ -23,7 +26,7 @@ export function taskCount(columnName: string) {
 
 /** The Task in the Board whose title is exactly `title`. */
 export function taskItem(title: string): HTMLElement {
-  const item = screen.getAllByRole('listitem').find((li) => li.textContent === title);
+  const item = screen.getAllByRole('listitem').find((li) => titleOf(li) === title);
   if (!item) throw new Error(`No Task titled "${title}" on the Board`);
   return item;
 }

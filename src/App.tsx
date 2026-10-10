@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { STATUSES, localDate, type LocalDate, type Status, type Task } from './board/board';
+import { STATUSES, localDate, type Label, type LocalDate, type Status, type Task } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
 import { MovableTaskList, MovableTasks, useColumnDropTarget } from './MovableTasks';
@@ -43,12 +43,15 @@ export function App({ storage, clock }: AppProps) {
                 showHint={boardIsEmpty && status.id === 'todo'}
                 onOpenTask={setOpenTaskId}
                 today={today}
+                labels={board.labels}
               />
             ))
           }
         </MovableTasks>
       </main>
-      {openTask && <TaskModal key={openTask.id} task={openTask} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />}
+      {openTask && (
+        <TaskModal key={openTask.id} task={openTask} board={board} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />
+      )}
     </>
   );
 }
@@ -62,9 +65,11 @@ interface ColumnProps {
   onOpenTask: (id: string) => void;
   /** The user's local date, for showing Overdue Tasks. */
   today: LocalDate;
+  /** Every Label on the Board, for the Label chips. */
+  labels: Label[];
 }
 
-function Column({ status, tasks, dispatch, showHint, onOpenTask, today }: ColumnProps) {
+function Column({ status, tasks, dispatch, showHint, onOpenTask, today, labels }: ColumnProps) {
   const dropTargetRef = useColumnDropTarget(status.id);
   return (
     <section ref={dropTargetRef} className="column" aria-label={status.name}>
@@ -79,7 +84,7 @@ function Column({ status, tasks, dispatch, showHint, onOpenTask, today }: Column
         status={status.id}
         tasks={tasks}
         onOpenTask={onOpenTask}
-        renderTask={(task) => <TaskCard task={task} today={today} />}
+        renderTask={(task) => <TaskCard task={task} today={today} labels={labels} />}
       />
       <QuickAdd onAdd={(title) => dispatch({ type: 'addTask', id: crypto.randomUUID(), status: status.id, title })} />
     </section>

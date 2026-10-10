@@ -505,6 +505,122 @@ describe('Deleting a Task', () => {
   });
 });
 
+describe('Attaching Labels', () => {
+  const created = new Date('2026-10-10T09:00:00.000Z');
+  const later = new Date('2026-10-11T14:30:00.000Z');
+
+  function boardWithTasks(): Board {
+    let board = emptyBoard();
+    board = applyAction(board, { type: 'addTask', id: 't1', status: 'todo', title: 'Fix login' }, created);
+    board = applyAction(board, { type: 'addTask', id: 't2', status: 'done', title: 'Ship it' }, created);
+    return board;
+  }
+
+  it('creates a Label from a new name, gives it the first palette color and attaches it', () => {
+    const board = applyAction(boardWithTasks(), { type: 'attachLabel', taskId: 't1', name: 'Bug', newLabelId: 'l1' }, later);
+
+    expect(board.labels).toEqual([{ id: 'l1', name: 'Bug', color: '#0c66e4' }]);
+    expect(board.tasks.find((t) => t.id === 't1')).toMatchObject({
+      labelIds: ['l1'],
+      updatedAt: '2026-10-11T14:30:00.000Z',
+    });
+  });
+
+  it.each(['bug', 'BUG', '  Bug  '])('reuses the existing Label when the name matches ignoring case (%j)', (name) => {
+    let board = applyAction(boardWithTasks(), { type: 'attachLabel', taskId: 't1', name: 'Bug', newLabelId: 'l1' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't2', name, newLabelId: 'l2' }, later);
+
+    expect(board.labels).toEqual([{ id: 'l1', name: 'Bug', color: '#0c66e4' }]);
+    expect(board.tasks.find((t) => t.id === 't2')?.labelIds).toEqual(['l1']);
+  });
+
+  it.each(['', '   ', '\n'])('leaves the Board unchanged for a blank name (%j)', (name) => {
+    const before = boardWithTasks();
+    expect(applyAction(before, { type: 'attachLabel', taskId: 't1', name, newLabelId: 'l1' }, later)).toBe(before);
+  });
+
+  it('leaves the Board unchanged (and Updated at alone) when the Task already carries the Label', () => {
+    const before = applyAction(boardWithTasks(), { type: 'attachLabel', taskId: 't1', name: 'Bug', newLabelId: 'l1' }, created);
+    expect(applyAction(before, { type: 'attachLabel', taskId: 't1', name: 'bug', newLabelId: 'l2' }, later)).toBe(before);
+  });
+
+  it('gives each new Label the next palette color, starting over once every color is taken', () => {
+    let board = boardWithTasks();
+    const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+    for (const name of names) {
+      board = applyAction(board, { type: 'attachLabel', taskId: 't1', name, newLabelId: `l-${name}` }, later);
+    }
+
+    expect(board.labels.map((label) => label.color)).toEqual([
+      '#0c66e4',
+      '#1f845a',
+      '#b65c02',
+      '#6e5dc6',
+      '#c9372c',
+      '#227d9b',
+      '#ae4787',
+      '#626f86',
+      '#0c66e4',
+      '#1f845a',
+    ]);
+  });
+
+  it('gives a new Label the first palette color no Label uses yet', () => {
+    const before: Board = {
+      tasks: boardWithTasks().tasks,
+      labels: [
+        { id: 'l1', name: 'Bug', color: '#0c66e4' },
+        { id: 'l2', name: 'Docs', color: '#b65c02' },
+      ],
+    };
+    const board = applyAction(before, { type: 'attachLabel', taskId: 't1', name: 'UI', newLabelId: 'l3' }, later);
+    expect(board.labels[2]).toEqual({ id: 'l3', name: 'UI', color: '#1f845a' });
+  });
+
+  it('leaves the Board unchanged for an unknown Task, creating no Label', () => {
+    const before = boardWithTasks();
+    expect(applyAction(before, { type: 'attachLabel', taskId: 'nope', name: 'Bug', newLabelId: 'l1' }, later)).toBe(before);
+  });
+});
+
+describe('Detaching Labels', () => {
+  const created = new Date('2026-10-10T09:00:00.000Z');
+  const later = new Date('2026-10-11T14:30:00.000Z');
+
+  /** Two Tasks; t1 carries Bug and UI, t2 carries Bug. */
+  function boardWithLabels(): Board {
+    let board = emptyBoard();
+    board = applyAction(board, { type: 'addTask', id: 't1', status: 'todo', title: 'Fix login' }, created);
+    board = applyAction(board, { type: 'addTask', id: 't2', status: 'todo', title: 'Fix logout' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't1', name: 'Bug', newLabelId: 'bug' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't1', name: 'UI', newLabelId: 'ui' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't2', name: 'Bug', newLabelId: 'unused' }, created);
+    return board;
+  }
+
+  it('removes the Label from the Task only and stamps Updated at', () => {
+    const board = applyAction(boardWithLabels(), { type: 'detachLabel', taskId: 't1', labelId: 'bug' }, later);
+
+    expect(board.tasks.find((t) => t.id === 't1')).toMatchObject({ labelIds: ['ui'], updatedAt: '2026-10-11T14:30:00.000Z' });
+    expect(board.tasks.find((t) => t.id === 't2')?.labelIds).toEqual(['bug']);
+  });
+
+  it('keeps a Label on the Board after it is removed from its last Task, ready for reuse', () => {
+    let board = applyAction(boardWithLabels(), { type: 'detachLabel', taskId: 't1', labelId: 'ui' }, later);
+    expect(board.labels.map((label) => label.name)).toEqual(['Bug', 'UI']);
+
+    board = applyAction(board, { type: 'attachLabel', taskId: 't2', name: 'ui', newLabelId: 'ui-2' }, later);
+    expect(board.labels.map((label) => label.id)).toEqual(['bug', 'ui']);
+    expect(board.tasks.find((t) => t.id === 't2')?.labelIds).toEqual(['bug', 'ui']);
+  });
+
+  it('leaves the Board unchanged when the Task does not carry the Label, or is unknown', () => {
+    const before = boardWithLabels();
+    expect(applyAction(before, { type: 'detachLabel', taskId: 't2', labelId: 'ui' }, later)).toBe(before);
+    expect(applyAction(before, { type: 'detachLabel', taskId: 'nope', labelId: 'bug' }, later)).toBe(before);
+  });
+});
+
 describe('Overdue', () => {
   // A fixed clock at 09:00 local time on 10 October 2026.
   const clock = fixedClock(new Date(2026, 9, 10, 9, 0));
