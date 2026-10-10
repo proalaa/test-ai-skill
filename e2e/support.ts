@@ -7,7 +7,7 @@ export function column(page: Page, name: string) {
 }
 
 /** A Task in its Column, by its title heading. */
-export function taskItem(page: Page, title: string) {
+export function shownTask(page: Page, title: string) {
   return page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
 }
 
@@ -25,7 +25,7 @@ export async function addTask(page: Page, columnName: string, title: string) {
 
 /** Opens a Task's modal by clicking it on the Board. */
 export async function openTask(page: Page, title: string) {
-  await taskItem(page, title).click();
+  await shownTask(page, title).click();
   await expect(taskModal(page)).toBeVisible();
   return taskModal(page);
 }

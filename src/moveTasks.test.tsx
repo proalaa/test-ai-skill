@@ -2,7 +2,7 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { fixedClock } from './test/clocks';
 import { renderApp } from './test/renderApp';
-import { addTasks, keyboardMove, taskCount, taskItem, taskTitles } from './test/queries';
+import { addTasks, keyboardMove, taskCount, shownTask, taskTitles } from './test/queries';
 
 describe('Moving Tasks with the keyboard', () => {
   it('reorders a Task down within its Column', async () => {
@@ -101,7 +101,7 @@ describe('Moving Tasks with the keyboard', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['B', 'A']);
 
-    taskItem('B').focus();
+    shownTask('B').focus();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('dialog', { name: /task details/i })).toBeInTheDocument();
     expect(within(screen.getByRole('dialog')).getByLabelText('Title')).toHaveValue('B');

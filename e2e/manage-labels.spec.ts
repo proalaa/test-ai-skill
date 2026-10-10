@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addTask, taskItem, taskModal } from './support';
+import { addTask, shownTask, taskModal } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -17,11 +17,11 @@ function labelRow(page: Page, name: string) {
 
 /** The Label chips a Task shows in its Column. */
 function labelChips(page: Page, title: string) {
-  return taskItem(page, title).getByRole('group', { name: 'Labels' });
+  return shownTask(page, title).getByRole('group', { name: 'Labels' });
 }
 
 async function attachLabels(page: Page, title: string, ...names: string[]) {
-  await taskItem(page, title).click();
+  await shownTask(page, title).click();
   const input = taskModal(page).getByLabel('Add label');
   for (const name of names) {
     await input.fill(name);
@@ -38,7 +38,7 @@ test('Labels are renamed, recolored and deleted from the Manage labels screen, e
   await attachLabels(page, 'Fix login', 'Bug', 'UI', 'Docs');
   await attachLabels(page, 'Fix logout', 'Bug');
   // Docs stays on the Board unused.
-  await taskItem(page, 'Fix login').click();
+  await shownTask(page, 'Fix login').click();
   await taskModal(page).getByRole('button', { name: /remove label docs/i }).click();
   await taskModal(page).getByRole('button', { name: 'Close' }).click();
 
