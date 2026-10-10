@@ -1,12 +1,5 @@
-import { isOverdue, labelsOf, type Label, type LocalDate, type Priority, type Task } from './board/board';
+import { isOverdue, labelsOf, priorityName, type Label, type LocalDate, type Task } from './board/board';
 import { LabelChips } from './LabelChip';
-
-const PRIORITY_NAMES: Record<Exclude<Priority, 'none'>, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
 
 export interface TaskSummaryProps {
   task: Task;
@@ -31,7 +24,7 @@ export function TaskSummary({ task, today, labels }: TaskSummaryProps) {
           {task.priority !== 'none' && (
             <span className={`priority-badge priority-${task.priority}`}>
               <span className="visually-hidden">Priority: </span>
-              {PRIORITY_NAMES[task.priority]}
+              {priorityName(task.priority)}
             </span>
           )}
           {task.dueDate && <DueDate dueDate={task.dueDate} overdue={isOverdue(task, today)} today={today} />}

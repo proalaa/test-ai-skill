@@ -1,17 +1,9 @@
 import { useId, useRef, useState } from 'react';
-import type { Board, Priority, Task, TaskChanges, Timestamp } from './board/board';
+import { PRIORITIES, type Board, type Priority, type Task, type TaskChanges, type Timestamp } from './board/board';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
 import { TaskLabels } from './TaskLabels';
 import type { Dispatch } from './useBoard';
-
-const PRIORITY_NAMES: Record<Priority, string> = {
-  none: 'None',
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
 
 interface TaskModalProps {
   task: Task;
@@ -88,9 +80,9 @@ export function TaskModal({ task, board, dispatch, onClose }: TaskModalProps) {
         <label className="field">
           <span className="field-label">Priority</span>
           <select value={task.priority} onChange={(event) => update({ priority: event.target.value as Priority })}>
-            {Object.entries(PRIORITY_NAMES).map(([value, name]) => (
-              <option key={value} value={value}>
-                {name}
+            {PRIORITIES.map((priority) => (
+              <option key={priority.id} value={priority.id}>
+                {priority.name}
               </option>
             ))}
           </select>

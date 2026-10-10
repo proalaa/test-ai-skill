@@ -16,7 +16,21 @@ export const STATUSES: readonly Status[] = [
   { id: 'done', name: 'Done' },
 ];
 
-export type Priority = 'none' | 'low' | 'medium' | 'high' | 'urgent';
+/** The Priorities, lowest first, with the names the user sees. */
+export const PRIORITIES = [
+  { id: 'none', name: 'None' },
+  { id: 'low', name: 'Low' },
+  { id: 'medium', name: 'Medium' },
+  { id: 'high', name: 'High' },
+  { id: 'urgent', name: 'Urgent' },
+] as const;
+
+export type Priority = (typeof PRIORITIES)[number]['id'];
+
+/** The name the user sees for a Priority, e.g. "Urgent". */
+export function priorityName(priority: Priority): string {
+  return PRIORITIES.find((p) => p.id === priority)!.name;
+}
 
 /** A calendar day with no time of day, as `YYYY-MM-DD`. */
 export type LocalDate = string;
@@ -96,7 +110,7 @@ export function importBoard(text: string): ImportResult {
 
 const NOT_AN_EXPORT = 'The file is not a Task Board export.';
 const STATUS_IDS: readonly string[] = STATUSES.map((status) => status.id);
-const PRIORITIES: readonly string[] = ['none', 'low', 'medium', 'high', 'urgent'] satisfies Priority[];
+const PRIORITY_IDS: readonly string[] = PRIORITIES.map((priority) => priority.id);
 
 /** Thrown while reading imported data; its message says what is wrong. */
 class InvalidData extends Error {}
@@ -156,7 +170,7 @@ function readTask(data: unknown, name: string): Task {
     description: field('description', isText, 'a description that is not text'),
     status: field('status', (v): v is StatusId => isText(v) && STATUS_IDS.includes(v), 'an unknown Status'),
     position: field('position', (v): v is number => Number.isInteger(v) && (v as number) >= 0, 'an invalid position'),
-    priority: field('priority', (v): v is Priority => isText(v) && PRIORITIES.includes(v), 'an unknown Priority'),
+    priority: field('priority', (v): v is Priority => isText(v) && PRIORITY_IDS.includes(v), 'an unknown Priority'),
     dueDate: field('dueDate', (v): v is LocalDate | null => v === null || isLocalDate(v), 'an invalid Due date'),
     labelIds: field('labelIds', (v): v is string[] => Array.isArray(v) && v.every(isText), 'invalid Label ids'),
     createdAt: field('createdAt', isTimestamp, 'an invalid Created at'),
