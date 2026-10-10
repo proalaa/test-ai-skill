@@ -31,6 +31,17 @@ export function taskItem(title: string): HTMLElement {
   return item;
 }
 
+/** The open task modal. */
+export function taskModal() {
+  return screen.getByRole('dialog', { name: /task details/i });
+}
+
+/** Opens a Task's modal by clicking its title on the Board. */
+export async function openTask(user: UserEvent, title: string) {
+  await user.click(screen.getByText(title));
+  return taskModal();
+}
+
 /** Adds Tasks to a Column through its quick-add input. */
 export async function addTasks(user: UserEvent, columnName: string, ...titles: string[]) {
   for (const title of titles) {

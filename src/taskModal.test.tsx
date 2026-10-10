@@ -1,51 +1,14 @@
 // App-level tests for the task modal: editing and deleting a Task.
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Board, Task } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { manualClock } from './test/manualClock';
-import { renderApp } from './test/renderApp';
+import type { Board } from './board/board';
+import { task } from './test/boards';
+import { manualClock } from './test/clocks';
+import { column, openTask, taskModal as modal, taskTitles } from './test/queries';
+import { renderApp, renderAppWith, type User } from './test/renderApp';
 
-function column(name: string) {
-  return screen.getByRole('region', { name });
-}
 
-function taskTitles(columnName: string) {
-  return within(column(columnName))
-    .queryAllByRole('listitem')
-    .map((item) => item.textContent);
-}
 
-function modal() {
-  return screen.getByRole('dialog', { name: /task details/i });
-}
-
-function task(fields: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
-  return {
-    description: '',
-    status: 'todo',
-    position: 0,
-    priority: 'none',
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-02T08:00:00.000Z',
-    completedAt: null,
-    ...fields,
-  };
-}
-
-/** Renders the app over a Board that is already saved in storage. */
-function renderAppWith(board: Board, options: Parameters<typeof renderApp>[0] = {}) {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(board);
-  return renderApp({ ...options, store });
-}
-
-async function openTask(user: ReturnType<typeof renderApp>['user'], title: string) {
-  await user.click(screen.getByText(title));
-  return modal();
-}
 
 describe('Opening a Task', () => {
   it('shows every field of the clicked Task in a modal', async () => {
@@ -140,7 +103,7 @@ describe('Keyboard use of the modal', () => {
       };
     }
 
-    async function removeChip(user: ReturnType<typeof renderApp>['user']) {
+    async function removeChip(user: User) {
       const dialog = await openTask(user, 'Chipped');
       await user.click(within(dialog).getByRole('button', { name: /remove label bug/i }));
       return dialog;

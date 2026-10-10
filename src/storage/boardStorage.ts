@@ -41,14 +41,3 @@ export function createBoardStorage(store: KeyValueStore): BoardStorage {
     },
   };
 }
-
-/** An in-memory KeyValueStore, for tests. */
-export function memoryKeyValueStore(initial: Record<string, string> = {}): KeyValueStore {
-  const data = new Map(Object.entries(initial));
-  return {
-    getItem: (key) => data.get(key) ?? null,
-    setItem: (key, value) => {
-      data.set(key, value);
-    },
-  };
-}

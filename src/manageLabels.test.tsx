@@ -1,26 +1,10 @@
 // App-level tests for the Manage labels screen: listing, renaming, recoloring and deleting Labels.
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Board, Task } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { renderApp, savedBoard } from './test/renderApp';
+import type { Board } from './board/board';
+import { task } from './test/boards';
+import { renderAppWith, savedBoard, type User } from './test/renderApp';
 
-type User = ReturnType<typeof renderApp>['user'];
-
-function task(fields: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
-  return {
-    description: '',
-    status: 'todo',
-    position: 0,
-    priority: 'none',
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-01T08:00:00.000Z',
-    completedAt: null,
-    ...fields,
-  };
-}
 
 /** Fix login carries Bug and UI, Fix logout (Done) carries Bug, Write docs carries nothing. Docs is unused. */
 const board: Board = {
@@ -36,12 +20,6 @@ const board: Board = {
   ],
 };
 
-/** Renders the app over a Board that is already saved in storage. */
-function renderAppWith(saved: Board) {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(saved);
-  return renderApp({ store });
-}
 
 function manageLabels() {
   return screen.getByRole('dialog', { name: /manage labels/i });

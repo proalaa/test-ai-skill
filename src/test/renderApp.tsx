@@ -2,12 +2,14 @@ import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import type { Board } from '../board/board';
-import { fixedClock, type Clock } from '../clock';
-import { createBoardStorage, memoryKeyValueStore, type KeyValueStore } from '../storage/boardStorage';
+import type { Clock } from '../clock';
+import { createBoardStorage, type KeyValueStore } from '../storage/boardStorage';
+import { fixedClock } from './clocks';
+import { memoryKeyValueStore } from './memoryKeyValueStore';
 
 export const DEFAULT_NOW = '2026-10-10T09:00:00.000Z';
 
-interface RenderAppOptions {
+export interface RenderAppOptions {
   /** Backing key/value store; pass the same one to a second render to simulate a reload. */
   store?: KeyValueStore;
   clock?: Clock;
@@ -23,6 +25,20 @@ export function renderApp({ store = memoryKeyValueStore(), clock = fixedClock(DE
   const user = userEvent.setup();
   const result = render(<App storage={storage} clock={clock} />);
   return { ...result, user, store, storage, clock, saved: () => savedBoard(store) };
+}
+
+export type User = ReturnType<typeof renderApp>['user'];
+
+/** Renders the app over a Board that is already saved in storage. */
+export function renderAppWith(board: Board, options: Omit<RenderAppOptions, 'store'> = {}) {
+  return renderApp({ ...options, store: storeWith(board) });
+}
+
+/** An in-memory store with `board` already saved in it. */
+export function storeWith(board: Board): KeyValueStore {
+  const store = memoryKeyValueStore();
+  createBoardStorage(store).save(board);
+  return store;
 }
 
 /** The Board saved in `store`; fails the test when there is none or it can't be read. */

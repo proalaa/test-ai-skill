@@ -1,23 +1,15 @@
 // App-level tests for attaching Labels to Tasks in the task modal and showing them as chips.
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Board, Task } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { renderApp } from './test/renderApp';
-
-function column(name: string) {
-  return screen.getByRole('region', { name });
-}
+import { task } from './test/boards';
+import { column, openTask, taskModal as modal } from './test/queries';
+import { renderApp, renderAppWith, type User } from './test/renderApp';
 
 /** The Task's card (`<li>`) in its Column. */
 function taskCard(columnName: string, title: string) {
   const card = within(column(columnName)).getByText(title).closest('li');
   if (!card) throw new Error(`No Task card for “${title}”`);
   return card;
-}
-
-function modal() {
-  return screen.getByRole('dialog', { name: /task details/i });
 }
 
 /** The names of the Labels attached to the open Task, read from their remove buttons in the modal. */
@@ -27,34 +19,7 @@ function modalLabelNames() {
     .map((button) => button.getAttribute('aria-label')?.replace(/^remove label /i, ''));
 }
 
-function task(fields: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
-  return {
-    description: '',
-    status: 'todo',
-    position: 0,
-    priority: 'none',
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-01T08:00:00.000Z',
-    completedAt: null,
-    ...fields,
-  };
-}
 
-/** Renders the app over a Board that is already saved in storage. */
-function renderAppWith(board: Board) {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(board);
-  return renderApp({ store });
-}
-
-type User = ReturnType<typeof renderApp>['user'];
-
-async function openTask(user: User, title: string) {
-  await user.click(screen.getByText(title));
-  return modal();
-}
 
 async function attachLabel(user: User, name: string) {
   await user.type(within(modal()).getByLabelText('Add label'), `${name}{Enter}`);

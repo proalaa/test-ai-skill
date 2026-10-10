@@ -2,36 +2,20 @@
 // Due date (and whether it is Overdue) and the description icon.
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Board, Task } from './board/board';
-import { fixedClock } from './clock';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { renderApp } from './test/renderApp';
+import type { Task } from './board/board';
+import { task } from './test/boards';
+import { fixedClock } from './test/clocks';
+import { renderApp, renderAppWith as renderBoard, storeWith } from './test/renderApp';
 
 // 09:00 local time on 10 October 2026: "today" is 2026-10-10 in any time zone.
 const clock = fixedClock(new Date(2026, 9, 10, 9, 0));
 
-function task(fields: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
-  return {
-    description: '',
-    status: 'todo',
-    position: 0,
-    priority: 'none',
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-02T08:00:00.000Z',
-    completedAt: null,
-    ...fields,
-  };
+/** Renders the app over a saved Board holding `tasks` and no Labels. */
+function renderAppWith(tasks: Task[]) {
+  return renderBoard({ tasks, labels: [] }, { clock });
 }
 
-/** Renders the app over a Board that is already saved in storage. */
-function renderAppWith(tasks: Task[]) {
-  const store = memoryKeyValueStore();
-  const board: Board = { tasks, labels: [] };
-  createBoardStorage(store).save(board);
-  return renderApp({ store, clock });
-}
+
 
 /** The Task with the given title, as shown in its Column. */
 function taskCard(title: string) {
@@ -93,8 +77,7 @@ describe('Due date', () => {
   });
 
   it('takes "today" from the injected clock', () => {
-    const store = memoryKeyValueStore();
-    createBoardStorage(store).save({ labels: [], tasks: [task({ id: 'x', title: 'Ship', dueDate: '2026-10-10' })] });
+    const store = storeWith({ labels: [], tasks: [task({ id: 'x', title: 'Ship', dueDate: '2026-10-10' })] });
 
     const onTheDay = renderApp({ store, clock: fixedClock(new Date(2026, 9, 10, 23, 59)) });
     expect(taskCard('Ship')).not.toHaveTextContent(/overdue/i);

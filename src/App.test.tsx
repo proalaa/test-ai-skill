@@ -1,15 +1,12 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { fixedClock } from './clock';
-import { memoryKeyValueStore } from './storage/boardStorage';
+import { fixedClock } from './test/clocks';
+import { memoryKeyValueStore } from './test/memoryKeyValueStore';
+import { addTaskInput, column, taskTitles } from './test/queries';
 import { renderApp } from './test/renderApp';
 
 function columnNames() {
   return screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'));
-}
-
-function column(name: string) {
-  return screen.getByRole('region', { name });
 }
 
 describe('The empty Board', () => {
@@ -37,16 +34,6 @@ describe('The empty Board', () => {
     expect(screen.queryAllByRole('listitem')).toEqual([]);
   });
 });
-
-function addTaskInput(columnName: string) {
-  return within(column(columnName)).getByRole('textbox', { name: /add task/i });
-}
-
-function taskTitles(columnName: string) {
-  return within(column(columnName))
-    .queryAllByRole('listitem')
-    .map((item) => item.textContent);
-}
 
 describe('Quick add', () => {
   it('adds a Task to the bottom of the Column whose input was used', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixedClock } from '../clock';
+import { fixedClock } from '../test/clocks';
 import {
   STATUSES,
   applyAction,

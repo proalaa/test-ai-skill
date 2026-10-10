@@ -1,24 +1,12 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { exportBoard, type Board } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
+import { exportBoard, type Board, type StatusId } from './board/board';
+import { task as taskWith } from './test/boards';
 import { taskTitles } from './test/queries';
-import { renderApp } from './test/renderApp';
+import { renderAppWith } from './test/renderApp';
 
-function task(id: string, title: string, status: Board['tasks'][number]['status'], position: number) {
-  return {
-    id,
-    title,
-    description: '',
-    status,
-    position,
-    priority: 'none' as const,
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-01T08:00:00.000Z',
-    completedAt: null,
-  };
+function task(id: string, title: string, status: StatusId, position: number) {
+  return taskWith({ id, title, status, position });
 }
 
 /** The Board the user already has before importing. */
@@ -38,9 +26,7 @@ const backupBoard: Board = {
 
 /** Renders the app with `currentBoard` already saved. */
 function renderWithCurrentBoard() {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(currentBoard);
-  return renderApp({ store });
+  return renderAppWith(currentBoard);
 }
 
 function jsonFile(text: string, name = 'backup.json') {

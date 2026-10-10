@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { fixedClock } from './clock';
+import { fixedClock } from './test/clocks';
 import { renderApp } from './test/renderApp';
 import { addTasks, keyboardMove, taskCount, taskItem, taskTitles } from './test/queries';
 
