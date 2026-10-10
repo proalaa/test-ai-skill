@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
-import { STATUSES, tasksIn, type Board, type Status } from './board/board';
+import { STATUSES, localDate, tasksIn, type Board, type LocalDate, type Status } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
 import type { BoardStorage } from './storage/boardStorage';
+import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import { useBoard, type Dispatch } from './useBoard';
 import './App.css';
@@ -21,6 +22,7 @@ export function App({ storage, clock }: AppProps) {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const boardIsEmpty = board.tasks.length === 0;
   const openTask = board.tasks.find((task) => task.id === openTaskId);
+  const today = localDate(clock.now());
 
   return (
     <>
@@ -37,6 +39,7 @@ export function App({ storage, clock }: AppProps) {
             dispatch={dispatch}
             showHint={boardIsEmpty && status.id === 'todo'}
             onOpenTask={setOpenTaskId}
+            today={today}
           />
         ))}
       </main>
@@ -51,9 +54,11 @@ interface ColumnProps {
   dispatch: Dispatch;
   showHint: boolean;
   onOpenTask: (id: string) => void;
+  /** The user's local date, for showing Overdue Tasks. */
+  today: LocalDate;
 }
 
-function Column({ status, board, dispatch, showHint, onOpenTask }: ColumnProps) {
+function Column({ status, board, dispatch, showHint, onOpenTask, today }: ColumnProps) {
   const tasks = tasksIn(board, status.id);
   return (
     <section className="column" aria-label={status.name}>
@@ -67,7 +72,7 @@ function Column({ status, board, dispatch, showHint, onOpenTask }: ColumnProps) 
       <ul className="task-list">
         {tasks.map((task) => (
           <li key={task.id} className="task" onClick={() => onOpenTask(task.id)}>
-            {task.title}
+            <TaskCard task={task} today={today} />
           </li>
         ))}
       </ul>
