@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { STATUSES, applyAction, emptyBoard, exportBoard, importBoard, tasksIn, type Board, type StatusId } from './board';
+import { fixedClock } from '../clock';
+import {
+  STATUSES,
+  applyAction,
+  emptyBoard,
+  exportBoard,
+  importBoard,
+  isOverdue,
+  localDate,
+  tasksIn,
+  type Board,
+  type StatusId,
+  type Task,
+} from './board';
 
 describe('Board', () => {
   it('has the Statuses To Do, In Progress and Done, in that order', () => {
@@ -489,5 +502,40 @@ describe('Deleting a Task', () => {
   it('leaves the Board unchanged for an unknown Task', () => {
     const before = boardWithTasks();
     expect(applyAction(before, { type: 'deleteTask', id: 'nope' }, now)).toBe(before);
+  });
+});
+
+describe('Overdue', () => {
+  // A fixed clock at 09:00 local time on 10 October 2026.
+  const clock = fixedClock(new Date(2026, 9, 10, 9, 0));
+  const today = localDate(clock.now());
+
+  function taskWith(fields: Partial<Pick<Task, 'status' | 'dueDate'>>): Task {
+    const board = applyAction(emptyBoard(), { type: 'addTask', id: 't1', status: 'todo', title: 'Ship it' }, clock.now());
+    return { ...board.tasks[0], ...fields };
+  }
+
+  it('is Overdue when the Due date is before today and the Task is not Done', () => {
+    expect(isOverdue(taskWith({ status: 'todo', dueDate: '2026-10-09' }), today)).toBe(true);
+    expect(isOverdue(taskWith({ status: 'in-progress', dueDate: '2025-12-31' }), today)).toBe(true);
+  });
+
+  it('is not Overdue when the Due date is today or later', () => {
+    expect(isOverdue(taskWith({ status: 'todo', dueDate: '2026-10-10' }), today)).toBe(false);
+    expect(isOverdue(taskWith({ status: 'todo', dueDate: '2026-10-11' }), today)).toBe(false);
+  });
+
+  it('is never Overdue in Done, even with a past Due date', () => {
+    expect(isOverdue(taskWith({ status: 'done', dueDate: '2026-10-01' }), today)).toBe(false);
+  });
+
+  it('is not Overdue without a Due date', () => {
+    expect(isOverdue(taskWith({ status: 'todo', dueDate: null }), today)).toBe(false);
+  });
+
+  it('takes today from the local calendar date, not the UTC one', () => {
+    expect(localDate(new Date(2026, 9, 10, 0, 5))).toBe('2026-10-10');
+    expect(localDate(new Date(2026, 9, 10, 23, 55))).toBe('2026-10-10');
+    expect(localDate(new Date(2026, 0, 3, 12, 0))).toBe('2026-01-03');
   });
 });

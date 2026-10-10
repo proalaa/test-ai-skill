@@ -323,6 +323,18 @@ function deleteTask(board: Board, { id }: DeleteTask): Board {
   };
 }
 
+/** The local calendar date of `date` (in the user's time zone), as `YYYY-MM-DD`. */
+export function localDate(date: Date): LocalDate {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** Whether the Task is Overdue on the local date `today`. */
+export function isOverdue(task: Task, today: LocalDate): boolean {
+  // `YYYY-MM-DD` strings sort in calendar order, so a string compare is enough.
+  return task.status !== 'done' && task.dueDate !== null && task.dueDate < today;
+}
+
 /** The Tasks with the given Status, in Column order (top first). */
 export function tasksIn(board: Board, status: StatusId): Task[] {
   return board.tasks

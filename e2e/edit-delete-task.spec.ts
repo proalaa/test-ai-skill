@@ -36,7 +36,7 @@ test('edits made in the modal save as they happen and survive a reload', async (
   await dialog.getByLabel('Description').fill('Cover the new modal\nand the delete flow');
   await dialog.getByLabel('Priority').selectOption('High');
   await dialog.getByLabel('Due date').fill('2026-11-03');
-  await expect(column(page, 'To Do').getByRole('listitem')).toHaveText(['Write the release notes']);
+  await expect(column(page, 'To Do').getByRole('listitem')).toContainText(['Write the release notes']);
 
   // A cleared title comes back when the field loses focus.
   await dialog.getByLabel('Title').fill('');

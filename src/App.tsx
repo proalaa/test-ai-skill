@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { STATUSES, type Status, type Task } from './board/board';
+import { STATUSES, localDate, type LocalDate, type Status, type Task } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
 import { MovableTaskList, MovableTasks, useColumnDropTarget } from './MovableTasks';
 import type { BoardStorage } from './storage/boardStorage';
+import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import { useBoard, type Dispatch } from './useBoard';
 import './App.css';
@@ -22,6 +23,7 @@ export function App({ storage, clock }: AppProps) {
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const boardIsEmpty = board.tasks.length === 0;
   const openTask = board.tasks.find((task) => task.id === openTaskId);
+  const today = localDate(clock.now());
 
   return (
     <>
@@ -40,6 +42,7 @@ export function App({ storage, clock }: AppProps) {
                 dispatch={dispatch}
                 showHint={boardIsEmpty && status.id === 'todo'}
                 onOpenTask={setOpenTaskId}
+                today={today}
               />
             ))
           }
@@ -57,9 +60,11 @@ interface ColumnProps {
   dispatch: Dispatch;
   showHint: boolean;
   onOpenTask: (id: string) => void;
+  /** The user's local date, for showing Overdue Tasks. */
+  today: LocalDate;
 }
 
-function Column({ status, tasks, dispatch, showHint, onOpenTask }: ColumnProps) {
+function Column({ status, tasks, dispatch, showHint, onOpenTask, today }: ColumnProps) {
   const dropTargetRef = useColumnDropTarget(status.id);
   return (
     <section ref={dropTargetRef} className="column" aria-label={status.name}>
@@ -70,7 +75,12 @@ function Column({ status, tasks, dispatch, showHint, onOpenTask }: ColumnProps) 
         </span>
       </header>
       {showHint && <p className="empty-hint">No tasks yet. Type a title in “+ Add task” below and press Enter.</p>}
-      <MovableTaskList status={status.id} tasks={tasks} onOpenTask={onOpenTask} />
+      <MovableTaskList
+        status={status.id}
+        tasks={tasks}
+        onOpenTask={onOpenTask}
+        renderTask={(task) => <TaskCard task={task} today={today} />}
+      />
       <QuickAdd onAdd={(title) => dispatch({ type: 'addTask', id: crypto.randomUUID(), status: status.id, title })} />
     </section>
   );

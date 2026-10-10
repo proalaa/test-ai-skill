@@ -199,22 +199,26 @@ interface MovableTaskListProps {
   tasks: Task[];
   /** Opens a Task (on click, or Enter while it has focus). */
   onOpenTask: (id: string) => void;
+  /** What each Task shows inside its list item. */
+  renderTask: (task: Task) => ReactNode;
 }
 
 /** The Tasks of one Column as a list whose items can be dragged. */
-export function MovableTaskList({ status, tasks, onOpenTask }: MovableTaskListProps) {
+export function MovableTaskList({ status, tasks, onOpenTask, renderTask }: MovableTaskListProps) {
   return (
     <SortableContext id={columnDroppableId(status)} items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
       <ul className="task-list">
         {tasks.map((task) => (
-          <MovableTask key={task.id} task={task} onOpen={() => onOpenTask(task.id)} />
+          <MovableTask key={task.id} task={task} onOpen={() => onOpenTask(task.id)}>
+            {renderTask(task)}
+          </MovableTask>
         ))}
       </ul>
     </SortableContext>
   );
 }
 
-function MovableTask({ task, onOpen }: { task: Task; onOpen: () => void }) {
+function MovableTask({ task, onOpen, children }: { task: Task; onOpen: () => void; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     attributes: { role: 'listitem', roleDescription: 'movable Task' },
@@ -233,7 +237,7 @@ function MovableTask({ task, onOpen }: { task: Task; onOpen: () => void }) {
         if (event.key === 'Enter' && !isDragging && !event.defaultPrevented) onOpen();
       }}
     >
-      {task.title}
+      {children}
     </li>
   );
 }

@@ -364,3 +364,62 @@ body {
 .icon-button:hover {
   background: var(--column-bg);
 }
+
+/* Task details in the Column (ticket 05) */
+
+.task-title {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.task-details {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.priority-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.priority-low {
+  background: #6b778c;
+}
+
+.priority-medium {
+  background: #0c66e4;
+}
+
+.priority-high {
+  background: #c25100;
+}
+
+.priority-urgent {
+  background: #ae2e24;
+}
+
+.due-date.overdue {
+  color: var(--overdue);
+  font-weight: 600;
+}
+
+.description-icon {
+  display: inline-flex;
+}
+
+:root {
+  --overdue: #c9372c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --overdue: #f87168;
+  }
+}
