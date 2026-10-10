@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { STATUSES, tasksIn, type Board, type Status } from './board/board';
+import { STATUSES, type Status, type Task } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import type { Clock } from './clock';
+import { MovableTaskList, MovableTasks, useColumnDropTarget } from './MovableTasks';
 import type { BoardStorage } from './storage/boardStorage';
 import { TaskModal } from './TaskModal';
 import { useBoard, type Dispatch } from './useBoard';
@@ -29,16 +30,20 @@ export function App({ storage, clock }: AppProps) {
         <BoardTransfer board={board} replaceBoard={replaceBoard} clock={clock} />
       </header>
       <main className="board">
-        {STATUSES.map((status) => (
-          <Column
-            key={status.id}
-            status={status}
-            board={board}
-            dispatch={dispatch}
-            showHint={boardIsEmpty && status.id === 'todo'}
-            onOpenTask={setOpenTaskId}
-          />
-        ))}
+        <MovableTasks board={board} dispatch={dispatch}>
+          {(tasksOf) =>
+            STATUSES.map((status) => (
+              <Column
+                key={status.id}
+                status={status}
+                tasks={tasksOf(status.id)}
+                dispatch={dispatch}
+                showHint={boardIsEmpty && status.id === 'todo'}
+                onOpenTask={setOpenTaskId}
+              />
+            ))
+          }
+        </MovableTasks>
       </main>
       {openTask && <TaskModal key={openTask.id} task={openTask} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />}
     </>
@@ -47,16 +52,17 @@ export function App({ storage, clock }: AppProps) {
 
 interface ColumnProps {
   status: Status;
-  board: Board;
+  /** The Tasks shown in this Column, top first. */
+  tasks: Task[];
   dispatch: Dispatch;
   showHint: boolean;
   onOpenTask: (id: string) => void;
 }
 
-function Column({ status, board, dispatch, showHint, onOpenTask }: ColumnProps) {
-  const tasks = tasksIn(board, status.id);
+function Column({ status, tasks, dispatch, showHint, onOpenTask }: ColumnProps) {
+  const dropTargetRef = useColumnDropTarget(status.id);
   return (
-    <section className="column" aria-label={status.name}>
+    <section ref={dropTargetRef} className="column" aria-label={status.name}>
       <header className="column-header">
         <h2>{status.name}</h2>
         <span className="column-count" aria-label="Task count">
@@ -64,13 +70,7 @@ function Column({ status, board, dispatch, showHint, onOpenTask }: ColumnProps) 
         </span>
       </header>
       {showHint && <p className="empty-hint">No tasks yet. Type a title in “+ Add task” below and press Enter.</p>}
-      <ul className="task-list">
-        {tasks.map((task) => (
-          <li key={task.id} className="task" onClick={() => onOpenTask(task.id)}>
-            {task.title}
-          </li>
-        ))}
-      </ul>
+      <MovableTaskList status={status.id} tasks={tasks} onOpenTask={onOpenTask} />
       <QuickAdd onAdd={(title) => dispatch({ type: 'addTask', id: crypto.randomUUID(), status: status.id, title })} />
     </section>
   );
