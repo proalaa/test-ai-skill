@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { STATUSES, emptyBoard, tasksIn, type Board, type Status } from './board/board';
+import { useState, type FormEvent } from 'react';
+import { STATUSES, tasksIn, type Board, type Status } from './board/board';
 import type { Clock } from './clock';
 import type { BoardStorage } from './storage/boardStorage';
+import { useBoard, type Dispatch } from './useBoard';
 import './App.css';
 
 export interface AppProps {
@@ -13,21 +14,33 @@ export interface AppProps {
  * The top level of the app. The only place that holds storage and the clock;
  * nothing below it reads localStorage or the system time directly.
  */
-// `clock` is unused until Tasks can change (ticket 02 onwards).
-export function App({ storage }: AppProps) {
-  const [board] = useState<Board>(() => storage.load() ?? emptyBoard());
+export function App({ storage, clock }: AppProps) {
+  const [board, dispatch] = useBoard(storage, clock);
   const boardIsEmpty = board.tasks.length === 0;
 
   return (
     <main className="board">
       {STATUSES.map((status) => (
-        <Column key={status.id} status={status} board={board} showHint={boardIsEmpty && status.id === 'todo'} />
+        <Column
+          key={status.id}
+          status={status}
+          board={board}
+          dispatch={dispatch}
+          showHint={boardIsEmpty && status.id === 'todo'}
+        />
       ))}
     </main>
   );
 }
 
-function Column({ status, board, showHint }: { status: Status; board: Board; showHint: boolean }) {
+interface ColumnProps {
+  status: Status;
+  board: Board;
+  dispatch: Dispatch;
+  showHint: boolean;
+}
+
+function Column({ status, board, dispatch, showHint }: ColumnProps) {
   const tasks = tasksIn(board, status.id);
   return (
     <section className="column" aria-label={status.name}>
@@ -45,6 +58,29 @@ function Column({ status, board, showHint }: { status: Status; board: Board; sho
           </li>
         ))}
       </ul>
+      <QuickAdd onAdd={(title) => dispatch({ type: 'addTask', id: crypto.randomUUID(), status: status.id, title })} />
     </section>
+  );
+}
+
+/** The "+ Add task" input at the bottom of a Column. Enter adds; focus stays put. */
+function QuickAdd({ onAdd }: { onAdd: (title: string) => boolean }) {
+  const [title, setTitle] = useState('');
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (onAdd(title)) setTitle('');
+  }
+
+  return (
+    <form className="quick-add" onSubmit={submit}>
+      <input
+        className="quick-add-input"
+        aria-label="Add task"
+        placeholder="+ Add task"
+        value={title}
+        onChange={(event) => setTitle(event.target.value)}
+      />
+    </form>
   );
 }

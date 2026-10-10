@@ -1,6 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PORT = 5179;
+// Set E2E_PORT to run several worktrees' e2e suites at once without clashing.
+// With an explicit port we always start our own server, so a server from
+// another worktree on that port is never silently reused.
+const PORT = Number(process.env.E2E_PORT ?? 5179);
+const portOverridden = process.env.E2E_PORT !== undefined;
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,6 +20,6 @@ export default defineConfig({
   webServer: {
     command: `npx vite --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !portOverridden,
   },
 });

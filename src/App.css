@@ -83,3 +83,27 @@ body {
   border-radius: 6px;
   padding: 8px;
 }
+
+.quick-add {
+  margin-top: 8px;
+}
+
+.quick-add-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+}
+
+.quick-add-input::placeholder {
+  color: var(--muted);
+}
+
+.quick-add-input:hover,
+.quick-add-input:focus {
+  background: var(--card-bg);
+  border-color: var(--border);
+}
