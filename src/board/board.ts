@@ -191,7 +191,16 @@ function checkConsistency({ tasks, labels }: Board): void {
  * Something the user does to the Board. The caller supplies new ids so the
  * Board module stays deterministic.
  */
-export type BoardAction = AddTask | MoveTask | UpdateTask | DeleteTask | AttachLabel | DetachLabel;
+export type BoardAction =
+  | AddTask
+  | MoveTask
+  | UpdateTask
+  | DeleteTask
+  | AttachLabel
+  | DetachLabel
+  | RenameLabel
+  | RecolorLabel
+  | DeleteLabel;
 
 export interface AddTask {
   type: 'addTask';
@@ -243,6 +252,26 @@ export interface DetachLabel {
   labelId: string;
 }
 
+/** Gives a Label a new name, which every Task carrying it then shows. */
+export interface RenameLabel {
+  type: 'renameLabel';
+  labelId: string;
+  name: string;
+}
+
+/** Gives a Label a new color, which every Task carrying it then shows. */
+export interface RecolorLabel {
+  type: 'recolorLabel';
+  labelId: string;
+  color: string;
+}
+
+/** Deletes a Label from the Board and removes it from every Task carrying it. */
+export interface DeleteLabel {
+  type: 'deleteLabel';
+  labelId: string;
+}
+
 /** The fixed palette new Labels take their color from, in order. */
 export const LABEL_COLORS: readonly string[] = [
   '#0c66e4', // blue
@@ -270,6 +299,12 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
       return attachLabel(board, action, now);
     case 'detachLabel':
       return detachLabel(board, action, now);
+    case 'renameLabel':
+      return renameLabel(board, action);
+    case 'recolorLabel':
+      return recolorLabel(board, action);
+    case 'deleteLabel':
+      return deleteLabel(board, action, now);
   }
 }
 
@@ -378,6 +413,54 @@ function detachLabel(board: Board, { taskId, labelId }: DetachLabel, now: Date):
   return { ...board, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
 }
 
+/**
+ * Renames a Label. Tasks refer to Labels by id, so they all show the new name.
+ * A name `labelRenameError` rejects leaves the Board unchanged.
+ */
+function renameLabel(board: Board, { labelId, name }: RenameLabel): Board {
+  const label = board.labels.find((l) => l.id === labelId);
+  const trimmed = name.trim();
+  if (!label || label.name === trimmed || labelRenameError(board, labelId, name) !== null) return board;
+  return { ...board, labels: board.labels.map((l) => (l === label ? { ...l, name: trimmed } : l)) };
+}
+
+/** Changes a Label's color. Tasks refer to Labels by id, so they all show it. */
+function recolorLabel(board: Board, { labelId, color }: RecolorLabel): Board {
+  const label = board.labels.find((l) => l.id === labelId);
+  if (!label || label.color === color) return board;
+  return { ...board, labels: board.labels.map((l) => (l === label ? { ...l, color } : l)) };
+}
+
+/**
+ * Deletes a Label for good. Every Task that carried it loses it and gets a new
+ * Updated at, so no Task is left pointing at a Label that is not on the Board.
+ */
+function deleteLabel(board: Board, { labelId }: DeleteLabel, now: Date): Board {
+  if (!board.labels.some((label) => label.id === labelId)) return board;
+  const labels = board.labels.filter((label) => label.id !== labelId);
+  if (labelUsageCount(board, labelId) === 0) return { ...board, labels };
+  const timestamp = now.toISOString();
+  const tasks = board.tasks.map((task) =>
+    task.labelIds.includes(labelId)
+      ? { ...task, labelIds: task.labelIds.filter((id) => id !== labelId), updatedAt: timestamp }
+      : task,
+  );
+  return { labels, tasks };
+}
+
+/**
+ * Why renaming a Label to `name` would be rejected, as a message for the user,
+ * or null when the rename is allowed. Names are trimmed, must not be blank and
+ * must not clash, ignoring case, with another Label on the Board.
+ */
+export function labelRenameError(board: Pick<Board, 'labels'>, labelId: string, name: string): string | null {
+  const trimmed = name.trim();
+  if (trimmed === '') return 'A Label needs a name.';
+  const clash = findLabelByName(board, trimmed);
+  if (clash && clash.id !== labelId) return `There is already a Label named “${clash.name}”.`;
+  return null;
+}
+
 /** The palette color the fewest Labels use; the earliest in the palette on a tie. */
 function nextLabelColor(board: Board): string {
   const uses = (color: string) => board.labels.filter((label) => label.color === color).length;
@@ -385,7 +468,7 @@ function nextLabelColor(board: Board): string {
 }
 
 /** The Label with the given name, ignoring case, if the Board has one. */
-function findLabelByName(board: Board, name: string): Label | undefined {
+function findLabelByName(board: Pick<Board, 'labels'>, name: string): Label | undefined {
   const key = name.toLowerCase();
   return board.labels.find((label) => label.name.toLowerCase() === key);
 }
@@ -393,6 +476,11 @@ function findLabelByName(board: Board, name: string): Label | undefined {
 /** The Labels a Task carries, in the order they were attached. */
 export function labelsOf(board: Pick<Board, 'labels'>, task: Task): Label[] {
   return task.labelIds.flatMap((id) => board.labels.find((label) => label.id === id) ?? []);
+}
+
+/** How many Tasks on the Board carry the Label. */
+export function labelUsageCount(board: Board, labelId: string): number {
+  return board.tasks.filter((task) => task.labelIds.includes(labelId)).length;
 }
 
 /** The local calendar date of `date` (in the user's time zone), as `YYYY-MM-DD`. */
