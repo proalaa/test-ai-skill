@@ -49,6 +49,7 @@ test('dragging a Task to another Column changes its Status and lands where it is
   await drag(page, task(page, 'A'), task(page, 'Y'), 0.25);
 
   await expect(tasks(page, 'To Do')).toHaveText(['B']);
+  await expect(page.getByRole('dialog')).toHaveCount(0); // a drag is not a click
   await expect(tasks(page, 'In Progress')).toHaveText(['X', 'A', 'Y']);
   await expect(column(page, 'To Do').getByLabel('Task count')).toHaveText('1');
   await expect(column(page, 'In Progress').getByLabel('Task count')).toHaveText('3');

@@ -194,20 +194,27 @@ export function useColumnDropTarget(status: StatusId) {
   return useDroppable({ id: columnDroppableId(status) }).setNodeRef;
 }
 
+interface MovableTaskListProps {
+  status: StatusId;
+  tasks: Task[];
+  /** Opens a Task (on click, or Enter while it has focus). */
+  onOpenTask: (id: string) => void;
+}
+
 /** The Tasks of one Column as a list whose items can be dragged. */
-export function MovableTaskList({ status, tasks }: { status: StatusId; tasks: Task[] }) {
+export function MovableTaskList({ status, tasks, onOpenTask }: MovableTaskListProps) {
   return (
     <SortableContext id={columnDroppableId(status)} items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
       <ul className="task-list">
         {tasks.map((task) => (
-          <MovableTask key={task.id} task={task} />
+          <MovableTask key={task.id} task={task} onOpen={() => onOpenTask(task.id)} />
         ))}
       </ul>
     </SortableContext>
   );
 }
 
-function MovableTask({ task }: { task: Task }) {
+function MovableTask({ task, onOpen }: { task: Task; onOpen: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     attributes: { role: 'listitem', roleDescription: 'movable Task' },
@@ -219,6 +226,12 @@ function MovableTask({ task }: { task: Task }) {
       style={{ transform: CSS.Translate.toString(transform), transition }}
       {...attributes}
       {...listeners}
+      // dnd-kit swallows the click that ends a pointer drag, so this only fires on a plain click.
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        listeners?.onKeyDown?.(event);
+        if (event.key === 'Enter' && !isDragging && !event.defaultPrevented) onOpen();
+      }}
     >
       {task.title}
     </li>

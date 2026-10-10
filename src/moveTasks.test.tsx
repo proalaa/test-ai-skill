@@ -1,7 +1,8 @@
+import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { fixedClock } from './clock';
 import { renderApp } from './test/renderApp';
-import { addTasks, keyboardMove, taskCount, taskTitles } from './test/queries';
+import { addTasks, keyboardMove, taskCount, taskItem, taskTitles } from './test/queries';
 
 describe('Moving Tasks with the keyboard', () => {
   it('reorders a Task down within its Column', async () => {
@@ -90,6 +91,20 @@ describe('Moving Tasks with the keyboard', () => {
     now = '2026-10-12T08:00:00.000Z';
     await keyboardMove(user, 'Ship it', '{ArrowLeft}');
     expect(storage.load()!.tasks[0]).toMatchObject({ status: 'in-progress', completedAt: null });
+  });
+
+  it('opens a focused Task with Enter, while Space picks it up instead', async () => {
+    const { user } = renderApp();
+    await addTasks(user, 'To Do', 'A', 'B');
+
+    await keyboardMove(user, 'A', '{ArrowDown}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(taskTitles('To Do')).toEqual(['B', 'A']);
+
+    taskItem('B').focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('dialog', { name: /task details/i })).toBeInTheDocument();
+    expect(within(screen.getByRole('dialog')).getByLabelText('Title')).toHaveValue('B');
   });
 
   it('keeps the new order and Status after a reload', async () => {

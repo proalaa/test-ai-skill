@@ -75,19 +75,123 @@ export function importBoard(text: string): ImportResult {
   } catch {
     return { ok: false, error: 'The file is not valid JSON.' };
   }
-  const { version, board } = (data ?? {}) as { version?: unknown; board?: unknown };
+  if (!isRecord(data)) return { ok: false, error: NOT_AN_EXPORT };
+  const { version, board } = data;
   if (version !== DATA_FORMAT_VERSION) {
     return { ok: false, error: `Unknown data-format version: ${String(version)}.` };
   }
-  // TODO(ticket 08): validate the shape of `board` and reject malformed data.
-  return { ok: true, board: board as Board };
+  if (!isRecord(board)) return { ok: false, error: NOT_AN_EXPORT };
+  if (!Array.isArray(board.tasks)) return { ok: false, error: 'The Board has no list of Tasks.' };
+  if (!Array.isArray(board.labels)) return { ok: false, error: 'The Board has no list of Labels.' };
+  try {
+    const labels = board.labels.map((label, index) => readLabel(label, `Label ${index + 1}`));
+    const tasks = board.tasks.map((task, index) => readTask(task, `Task ${index + 1}`));
+    checkConsistency({ tasks, labels });
+    return { ok: true, board: { tasks, labels } };
+  } catch (error) {
+    if (error instanceof InvalidData) return { ok: false, error: error.message };
+    throw error;
+  }
+}
+
+const NOT_AN_EXPORT = 'The file is not a Task Board export.';
+const STATUS_IDS: readonly string[] = STATUSES.map((status) => status.id);
+const PRIORITIES: readonly string[] = ['none', 'low', 'medium', 'high', 'urgent'] satisfies Priority[];
+
+/** Thrown while reading imported data; its message says what is wrong. */
+class InvalidData extends Error {}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function isLocalDate(value: unknown): value is LocalDate {
+  return isText(value) && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function isTimestamp(value: unknown): value is Timestamp {
+  return isText(value) && /^\d{4}-\d{2}-\d{2}T/.test(value) && !Number.isNaN(Date.parse(value));
+}
+
+function isId(value: unknown): value is string {
+  return isText(value) && value !== '';
+}
+
+function isNonBlankText(value: unknown): value is string {
+  return isText(value) && value.trim() !== '';
+}
+
+type FieldReader = <T>(key: string, valid: (value: unknown) => value is T, what: string) => T;
+
+/** Reads fields of `data` (named `name` in errors), throwing InvalidData on the first bad one. */
+function fieldReader(data: unknown, name: string, kind: string): FieldReader {
+  if (!isRecord(data)) throw new InvalidData(`${name} is not a ${kind}.`);
+  return (key, valid, what) => {
+    const value = data[key];
+    if (!valid(value)) throw new InvalidData(`${name} has ${what}.`);
+    return value;
+  };
+}
+
+/** Copies a Label's fields out of untrusted data, or throws InvalidData naming the bad field. */
+function readLabel(data: unknown, name: string): Label {
+  const field = fieldReader(data, name, 'Label');
+  return {
+    id: field('id', isId, 'no valid id'),
+    name: field('name', isNonBlankText, 'no name'),
+    color: field('color', isText, 'a color that is not text'),
+  };
+}
+
+/** Copies a Task's fields out of untrusted data, or throws InvalidData naming the bad field. */
+function readTask(data: unknown, name: string): Task {
+  const field = fieldReader(data, name, 'Task');
+  return {
+    id: field('id', isId, 'no valid id'),
+    title: field('title', isNonBlankText, 'no title'),
+    description: field('description', isText, 'a description that is not text'),
+    status: field('status', (v): v is StatusId => isText(v) && STATUS_IDS.includes(v), 'an unknown Status'),
+    position: field('position', (v): v is number => Number.isInteger(v) && (v as number) >= 0, 'an invalid position'),
+    priority: field('priority', (v): v is Priority => isText(v) && PRIORITIES.includes(v), 'an unknown Priority'),
+    dueDate: field('dueDate', (v): v is LocalDate | null => v === null || isLocalDate(v), 'an invalid Due date'),
+    labelIds: field('labelIds', (v): v is string[] => Array.isArray(v) && v.every(isText), 'invalid Label ids'),
+    createdAt: field('createdAt', isTimestamp, 'an invalid Created at'),
+    updatedAt: field('updatedAt', isTimestamp, 'an invalid Updated at'),
+    completedAt: field('completedAt', (v): v is Timestamp | null => v === null || isTimestamp(v), 'an invalid Completed at'),
+  };
+}
+
+/** Checks the rules that span the Board: unique ids, unique Label names, no missing Labels. */
+function checkConsistency({ tasks, labels }: Board): void {
+  const labelIds = new Set<string>();
+  const labelNames = new Set<string>();
+  for (const label of labels) {
+    if (labelIds.has(label.id)) throw new InvalidData(`Two Labels share the id “${label.id}”.`);
+    const key = label.name.toLowerCase();
+    if (labelNames.has(key)) throw new InvalidData(`Two Labels are named “${label.name}” (ignoring case).`);
+    labelIds.add(label.id);
+    labelNames.add(key);
+  }
+  const taskIds = new Set<string>();
+  for (const task of tasks) {
+    if (taskIds.has(task.id)) throw new InvalidData(`Two Tasks share the id “${task.id}”.`);
+    taskIds.add(task.id);
+    const missing = task.labelIds.find((id) => !labelIds.has(id));
+    if (missing !== undefined) {
+      throw new InvalidData(`Task “${task.title}” carries a Label that is not on the Board (“${missing}”).`);
+    }
+  }
 }
 
 /**
  * Something the user does to the Board. The caller supplies new ids so the
  * Board module stays deterministic.
  */
-export type BoardAction = AddTask | MoveTask;
+export type BoardAction = AddTask | MoveTask | UpdateTask | DeleteTask;
 
 export interface AddTask {
   type: 'addTask';
@@ -107,6 +211,20 @@ export interface MoveTask {
   position: number;
 }
 
+/** The Task fields the user edits directly (in the task modal). */
+export type TaskChanges = Partial<Pick<Task, 'title' | 'description' | 'priority' | 'dueDate'>>;
+
+export interface UpdateTask {
+  type: 'updateTask';
+  id: string;
+  changes: TaskChanges;
+}
+
+export interface DeleteTask {
+  type: 'deleteTask';
+  id: string;
+}
+
 /** The Board after `action` was applied at time `now`. Never mutates `board`. */
 export function applyAction(board: Board, action: BoardAction, now: Date): Board {
   switch (action.type) {
@@ -114,6 +232,10 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
       return addTask(board, action, now);
     case 'moveTask':
       return moveTask(board, action, now);
+    case 'updateTask':
+      return updateTask(board, action, now);
+    case 'deleteTask':
+      return deleteTask(board, action);
   }
 }
 
@@ -167,6 +289,38 @@ function addTask(board: Board, { id, status, title }: AddTask, now: Date): Board
     completedAt: null,
   };
   return { ...board, tasks: [...board.tasks, task] };
+}
+
+/**
+ * Changes a Task's editable fields and stamps its Updated at. The title is
+ * trimmed; a blank title keeps the previous one. If no field actually changes,
+ * the Board is returned unchanged.
+ */
+function updateTask(board: Board, { id, changes }: UpdateTask, now: Date): Board {
+  const task = board.tasks.find((t) => t.id === id);
+  if (!task) return board;
+
+  const { title, ...rest } = changes;
+  const accepted: TaskChanges = { ...rest };
+  if (title !== undefined && title.trim() !== '') accepted.title = title.trim();
+
+  const changed = (Object.keys(accepted) as (keyof TaskChanges)[]).some((field) => accepted[field] !== task[field]);
+  if (!changed) return board;
+
+  const updated: Task = { ...task, ...accepted, updatedAt: now.toISOString() };
+  return { ...board, tasks: board.tasks.map((t) => (t.id === id ? updated : t)) };
+}
+
+/** Removes a Task for good; the Tasks below it in its Column move up. */
+function deleteTask(board: Board, { id }: DeleteTask): Board {
+  const task = board.tasks.find((t) => t.id === id);
+  if (!task) return board;
+  return {
+    ...board,
+    tasks: board.tasks
+      .filter((t) => t.id !== id)
+      .map((t) => (t.status === task.status && t.position > task.position ? { ...t, position: t.position - 1 } : t)),
+  };
 }
 
 /** The Tasks with the given Status, in Column order (top first). */
