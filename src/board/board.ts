@@ -342,7 +342,7 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
  * positions stay 0..n-1. A move to where the Task already is changes nothing.
  */
 function moveTask(board: Board, { id, status, position }: MoveTask, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === id);
+  const task = findTask(board, id);
   if (!task) return board;
 
   const target = tasksIn(board, status).filter((t) => t.id !== id);
@@ -364,8 +364,8 @@ function moveTask(board: Board, { id, status, position }: MoveTask, now: Date): 
 
 /** Entering Done records Completed at; leaving Done clears it; otherwise it is kept. */
 function completedAtAfterMove(task: Task, status: StatusId, now: Timestamp): Timestamp | null {
-  if (status !== 'done') return null;
-  return task.status === 'done' ? task.completedAt : now;
+  if (!isDone(status)) return null;
+  return isDone(task.status) ? task.completedAt : now;
 }
 
 /** Adds a Task at the bottom of its Column. A blank title adds nothing. */
@@ -395,7 +395,7 @@ function addTask(board: Board, { id, status, title }: AddTask, now: Date): Board
  * the Board is returned unchanged.
  */
 function updateTask(board: Board, { id, changes }: UpdateTask, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === id);
+  const task = findTask(board, id);
   if (!task) return board;
 
   const { title, ...rest } = changes;
@@ -405,13 +405,12 @@ function updateTask(board: Board, { id, changes }: UpdateTask, now: Date): Board
   const changed = (Object.keys(accepted) as (keyof TaskChanges)[]).some((field) => accepted[field] !== task[field]);
   if (!changed) return board;
 
-  const updated: Task = { ...task, ...accepted, updatedAt: now.toISOString() };
-  return { ...board, tasks: board.tasks.map((t) => (t.id === id ? updated : t)) };
+  return replaceTask(board, { ...task, ...accepted, updatedAt: now.toISOString() });
 }
 
 /** Removes a Task for good; the Tasks below it in its Column move up. */
 function deleteTask(board: Board, { id }: DeleteTask): Board {
-  const task = board.tasks.find((t) => t.id === id);
+  const task = findTask(board, id);
   if (!task) return board;
   return {
     ...board,
@@ -423,23 +422,21 @@ function deleteTask(board: Board, { id }: DeleteTask): Board {
 
 /** Attaches a Label by name to a Task, creating the Label when the name is new. */
 function attachLabel(board: Board, { taskId, name, newLabelId }: AttachLabel, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === taskId);
+  const task = findTask(board, taskId);
   const trimmed = name.trim();
   if (!task || trimmed === '') return board;
   const existing = findLabelByName(board, trimmed);
   if (existing && task.labelIds.includes(existing.id)) return board;
   const label: Label = existing ?? { id: newLabelId, name: trimmed, color: nextLabelColor(board) };
   const labels = existing ? board.labels : [...board.labels, label];
-  const updated: Task = { ...task, labelIds: [...task.labelIds, label.id], updatedAt: now.toISOString() };
-  return { labels, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
+  return replaceTask({ ...board, labels }, { ...task, labelIds: [...task.labelIds, label.id], updatedAt: now.toISOString() });
 }
 
 /** Removes a Label from one Task; the Label itself stays on the Board for reuse. */
 function detachLabel(board: Board, { taskId, labelId }: DetachLabel, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === taskId);
+  const task = findTask(board, taskId);
   if (!task || !task.labelIds.includes(labelId)) return board;
-  const updated: Task = { ...task, labelIds: task.labelIds.filter((id) => id !== labelId), updatedAt: now.toISOString() };
-  return { ...board, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
+  return replaceTask(board, { ...task, labelIds: task.labelIds.filter((id) => id !== labelId), updatedAt: now.toISOString() });
 }
 
 /**
@@ -447,17 +444,17 @@ function detachLabel(board: Board, { taskId, labelId }: DetachLabel, now: Date):
  * A name `labelRenameError` rejects leaves the Board unchanged.
  */
 function renameLabel(board: Board, { labelId, name }: RenameLabel): Board {
-  const label = board.labels.find((l) => l.id === labelId);
+  const label = findLabel(board, labelId);
   const trimmed = name.trim();
   if (!label || label.name === trimmed || labelRenameError(board, labelId, name) !== null) return board;
-  return { ...board, labels: board.labels.map((l) => (l === label ? { ...l, name: trimmed } : l)) };
+  return replaceLabel(board, { ...label, name: trimmed });
 }
 
 /** Changes a Label's color. Tasks refer to Labels by id, so they all show it. */
 function recolorLabel(board: Board, { labelId, color }: RecolorLabel): Board {
-  const label = board.labels.find((l) => l.id === labelId);
+  const label = findLabel(board, labelId);
   if (!label || label.color === color) return board;
-  return { ...board, labels: board.labels.map((l) => (l === label ? { ...l, color } : l)) };
+  return replaceLabel(board, { ...label, color });
 }
 
 /**
@@ -465,7 +462,7 @@ function recolorLabel(board: Board, { labelId, color }: RecolorLabel): Board {
  * Updated at, so no Task is left pointing at a Label that is not on the Board.
  */
 function deleteLabel(board: Board, { labelId }: DeleteLabel, now: Date): Board {
-  if (!board.labels.some((label) => label.id === labelId)) return board;
+  if (!findLabel(board, labelId)) return board;
   const labels = board.labels.filter((label) => label.id !== labelId);
   if (labelUsageCount(board, labelId) === 0) return { ...board, labels };
   const timestamp = now.toISOString();
@@ -502,9 +499,27 @@ function findLabelByName(board: Pick<Board, 'labels'>, name: string): Label | un
   return board.labels.find((label) => label.name.toLowerCase() === key);
 }
 
+function findTask(board: Board, id: string): Task | undefined {
+  return board.tasks.find((task) => task.id === id);
+}
+
+function findLabel(board: Pick<Board, 'labels'>, id: string): Label | undefined {
+  return board.labels.find((label) => label.id === id);
+}
+
+/** The Board with the Task of the same id swapped for `updated`. */
+function replaceTask(board: Board, updated: Task): Board {
+  return { ...board, tasks: board.tasks.map((task) => (task.id === updated.id ? updated : task)) };
+}
+
+/** The Board with the Label of the same id swapped for `updated`. */
+function replaceLabel(board: Board, updated: Label): Board {
+  return { ...board, labels: board.labels.map((label) => (label.id === updated.id ? updated : label)) };
+}
+
 /** The Labels a Task carries, in the order they were attached. */
 export function labelsOf(board: Pick<Board, 'labels'>, task: Task): Label[] {
-  return task.labelIds.flatMap((id) => board.labels.find((label) => label.id === id) ?? []);
+  return task.labelIds.flatMap((id) => findLabel(board, id) ?? []);
 }
 
 /** How many Tasks on the Board carry the Label. */
@@ -521,7 +536,17 @@ export function localDate(date: Date): LocalDate {
 /** Whether the Task is Overdue on the local date `today`. */
 export function isOverdue(task: Task, today: LocalDate): boolean {
   // `YYYY-MM-DD` strings sort in calendar order, so a string compare is enough.
-  return task.status !== 'done' && task.dueDate !== null && task.dueDate < today;
+  return !isDone(task.status) && task.dueDate !== null && task.dueDate < today;
+}
+
+/** Whether a Status is Done, the one that records Completed at and is never Overdue. */
+export function isDone(status: StatusId): boolean {
+  return status === 'done';
+}
+
+/** Whether the Task has a Priority other than None. */
+export function hasPriority(task: Task): boolean {
+  return task.priority !== 'none';
 }
 
 /** The Tasks with the given Status, in Column order (top first). */

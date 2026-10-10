@@ -1,4 +1,4 @@
-import { isOverdue, labelsOf, priorityName, type Label, type LocalDate, type Task } from './board/board';
+import { hasPriority, isOverdue, labelsOf, priorityName, type Label, type LocalDate, type Task } from './board/board';
 import { LabelChips } from './LabelChip';
 
 export interface TaskSummaryProps {
@@ -15,13 +15,13 @@ export interface TaskSummaryProps {
  */
 export function TaskSummary({ task, today, labels }: TaskSummaryProps) {
   const hasDescription = task.description.trim() !== '';
-  const hasDetails = task.priority !== 'none' || task.dueDate !== null || hasDescription;
+  const hasDetails = hasPriority(task) || task.dueDate !== null || hasDescription;
   return (
     <>
       <h3 className="task-title">{task.title}</h3>
       {hasDetails && (
         <span className="task-details">
-          {task.priority !== 'none' && (
+          {hasPriority(task) && (
             <span className={`priority-badge priority-${task.priority}`}>
               <span className="visually-hidden">Priority: </span>
               {priorityName(task.priority)}

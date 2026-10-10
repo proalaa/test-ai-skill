@@ -57,7 +57,7 @@ export function App({ storage, clock }: AppProps) {
                 status={status}
                 tasks={tasksOf(status.id)}
                 dispatch={dispatch}
-                showHint={boardIsEmpty && status.id === 'todo'}
+                showHint={boardIsEmpty && status === STATUSES[0]}
                 onOpenTask={setOpenTaskId}
                 today={today}
                 labels={board.labels}
