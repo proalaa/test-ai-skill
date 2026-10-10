@@ -429,6 +429,120 @@ body {
   min-width: 0;
 }
 
+/* Manage labels screen (ticket 07) */
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.manage-labels .modal-header {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.manage-labels h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.label-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Two lines: chip and name (plus any error), then colors, usage and Delete. */
+.label-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas:
+    'chip name name name'
+    'error error error error'
+    'colors colors usage delete';
+  align-items: center;
+  column-gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.label-row .label-chip {
+  grid-area: chip;
+  justify-self: start;
+}
+
+.label-rename {
+  grid-area: name;
+  display: flex;
+}
+
+.label-rename input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.label-rename input[aria-invalid='true'] {
+  border-color: var(--overdue);
+}
+
+.label-error {
+  grid-area: error;
+  margin: 4px 0 0;
+  color: var(--overdue);
+  font-size: 0.8125rem;
+}
+
+.label-colors {
+  grid-area: colors;
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* Each palette color is a round swatch; the picked one gets a ring. */
+.label-color {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.label-color:checked {
+  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px var(--fg);
+}
+
+.label-color:focus-visible {
+  outline: 2px solid #4c9aff;
+  outline-offset: 3px;
+}
+
+.label-usage {
+  grid-area: usage;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.label-row > .button {
+  grid-area: delete;
+  margin-top: 10px;
+}
+
 /* Task details in the Column (ticket 05) */
 
 .task-title {

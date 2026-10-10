@@ -7,6 +7,9 @@ import {
   exportBoard,
   importBoard,
   isOverdue,
+  labelRenameError,
+  labelUsageCount,
+  labelsOf,
   localDate,
   tasksIn,
   type Board,
@@ -618,6 +621,153 @@ describe('Detaching Labels', () => {
     const before = boardWithLabels();
     expect(applyAction(before, { type: 'detachLabel', taskId: 't2', labelId: 'ui' }, later)).toBe(before);
     expect(applyAction(before, { type: 'detachLabel', taskId: 'nope', labelId: 'bug' }, later)).toBe(before);
+  });
+});
+
+describe('Managing Labels', () => {
+  const created = new Date('2026-10-10T09:00:00.000Z');
+  const later = new Date('2026-10-11T14:30:00.000Z');
+
+  /** Three Tasks: t1 carries Bug and UI, t2 carries Bug, t3 carries nothing. Docs is unused. */
+  function boardWithLabels(): Board {
+    let board = emptyBoard();
+    board = applyAction(board, { type: 'addTask', id: 't1', status: 'todo', title: 'Fix login' }, created);
+    board = applyAction(board, { type: 'addTask', id: 't2', status: 'done', title: 'Fix logout' }, created);
+    board = applyAction(board, { type: 'addTask', id: 't3', status: 'todo', title: 'Write docs' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't1', name: 'Bug', newLabelId: 'bug' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't1', name: 'UI', newLabelId: 'ui' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't2', name: 'Bug', newLabelId: 'unused' }, created);
+    board = applyAction(board, { type: 'attachLabel', taskId: 't3', name: 'Docs', newLabelId: 'docs' }, created);
+    board = applyAction(board, { type: 'detachLabel', taskId: 't3', labelId: 'docs' }, created);
+    return board;
+  }
+
+  /** The names of the Labels a Task shows, in order. */
+  function labelNamesOf(board: Board, taskId: string) {
+    const found = board.tasks.find((t) => t.id === taskId);
+    if (!found) throw new Error(`No Task ${taskId}`);
+    return labelsOf(board, found).map((label) => label.name);
+  }
+
+  describe('renaming', () => {
+    it('renames the Label, so every Task carrying it shows the new name', () => {
+      const board = applyAction(boardWithLabels(), { type: 'renameLabel', labelId: 'bug', name: 'Defect' }, later);
+
+      expect(board.labels.find((label) => label.id === 'bug')).toEqual({ id: 'bug', name: 'Defect', color: '#0c66e4' });
+      expect(labelNamesOf(board, 't1')).toEqual(['Defect', 'UI']);
+      expect(labelNamesOf(board, 't2')).toEqual(['Defect']);
+    });
+
+    it.each(['UI', 'ui', ' Docs ', 'DOCS'])('rejects a name that clashes with another Label ignoring case (%j), with a message', (name) => {
+      const before = boardWithLabels();
+      expect(applyAction(before, { type: 'renameLabel', labelId: 'bug', name }, later)).toBe(before);
+      expect(labelRenameError(before, 'bug', name)).toMatch(/already a label named “(UI|Docs)”/i);
+    });
+
+    it.each(['', '  '])('rejects a blank name (%j), with a message', (name) => {
+      const before = boardWithLabels();
+      expect(applyAction(before, { type: 'renameLabel', labelId: 'bug', name }, later)).toBe(before);
+      expect(labelRenameError(before, 'bug', name)).toMatch(/needs a name/i);
+    });
+
+    it('accepts a name with no clash, and trims it', () => {
+      const before = boardWithLabels();
+      expect(labelRenameError(before, 'bug', '  Defect ')).toBeNull();
+      const board = applyAction(before, { type: 'renameLabel', labelId: 'bug', name: '  Defect ' }, later);
+      expect(labelNamesOf(board, 't1')).toEqual(['Defect', 'UI']);
+    });
+
+    it("lets a Label change the case of its own name", () => {
+      const before = boardWithLabels();
+      expect(labelRenameError(before, 'bug', 'BUG')).toBeNull();
+      const board = applyAction(before, { type: 'renameLabel', labelId: 'bug', name: 'BUG' }, later);
+      expect(labelNamesOf(board, 't2')).toEqual(['BUG']);
+    });
+
+    it('leaves the Board unchanged when the name is the same, or the Label is unknown', () => {
+      const before = boardWithLabels();
+      expect(applyAction(before, { type: 'renameLabel', labelId: 'bug', name: 'Bug' }, later)).toBe(before);
+      expect(applyAction(before, { type: 'renameLabel', labelId: 'nope', name: 'Defect' }, later)).toBe(before);
+    });
+
+    it('leaves the Tasks and their Updated at alone', () => {
+      const before = boardWithLabels();
+      const board = applyAction(before, { type: 'renameLabel', labelId: 'bug', name: 'Defect' }, later);
+      expect(board.tasks).toBe(before.tasks);
+    });
+  });
+
+  describe('recoloring', () => {
+    it('changes the color of the Label, so every Task carrying it shows the new color', () => {
+      const before = boardWithLabels();
+      const board = applyAction(before, { type: 'recolorLabel', labelId: 'bug', color: '#c9372c' }, later);
+
+      expect(board.labels.find((label) => label.id === 'bug')).toEqual({ id: 'bug', name: 'Bug', color: '#c9372c' });
+      for (const id of ['t1', 't2']) {
+        const found = board.tasks.find((t) => t.id === id)!;
+        expect(labelsOf(board, found).find((label) => label.name === 'Bug')?.color).toBe('#c9372c');
+      }
+      expect(board.tasks).toBe(before.tasks);
+    });
+
+    it('frees the old color for the next new Label', () => {
+      // Bug, UI and Docs took blue, green and orange.
+      let board = applyAction(boardWithLabels(), { type: 'recolorLabel', labelId: 'bug', color: '#1f845a' }, later);
+      board = applyAction(board, { type: 'attachLabel', taskId: 't3', name: 'New', newLabelId: 'new' }, later);
+      expect(board.labels.find((label) => label.id === 'new')?.color).toBe('#0c66e4');
+    });
+
+    it('leaves the Board unchanged when the color is the same, or the Label is unknown', () => {
+      const before = boardWithLabels();
+      expect(applyAction(before, { type: 'recolorLabel', labelId: 'bug', color: '#0c66e4' }, later)).toBe(before);
+      expect(applyAction(before, { type: 'recolorLabel', labelId: 'nope', color: '#c9372c' }, later)).toBe(before);
+    });
+  });
+
+  describe('usage count', () => {
+    it('counts how many Tasks carry a Label, across every Status', () => {
+      const board = boardWithLabels();
+      expect(labelUsageCount(board, 'bug')).toBe(2);
+      expect(labelUsageCount(board, 'ui')).toBe(1);
+      expect(labelUsageCount(board, 'docs')).toBe(0);
+      expect(labelUsageCount(board, 'nope')).toBe(0);
+    });
+  });
+
+  describe('deleting', () => {
+    it('removes the Label from the Board and from every Task carrying it, stamping only those Tasks', () => {
+      const before = boardWithLabels();
+      const board = applyAction(before, { type: 'deleteLabel', labelId: 'bug' }, later);
+
+      expect(board.labels.map((label) => label.name)).toEqual(['UI', 'Docs']);
+      expect(board.tasks.find((t) => t.id === 't1')).toMatchObject({ labelIds: ['ui'], updatedAt: '2026-10-11T14:30:00.000Z' });
+      expect(board.tasks.find((t) => t.id === 't2')).toMatchObject({ labelIds: [], updatedAt: '2026-10-11T14:30:00.000Z' });
+      expect(board.tasks.find((t) => t.id === 't3')).toBe(before.tasks.find((t) => t.id === 't3'));
+      expect(labelUsageCount(board, 'bug')).toBe(0);
+    });
+
+    it('deletes an unused Label, leaving every Task alone', () => {
+      const before = boardWithLabels();
+      const board = applyAction(before, { type: 'deleteLabel', labelId: 'docs' }, later);
+      expect(board.labels.map((label) => label.name)).toEqual(['Bug', 'UI']);
+      expect(board.tasks).toBe(before.tasks);
+    });
+
+    it('leaves a Board that still exports and imports cleanly', () => {
+      const board = applyAction(boardWithLabels(), { type: 'deleteLabel', labelId: 'bug' }, later);
+      expect(importBoard(exportBoard(board))).toEqual({ ok: true, board });
+    });
+
+    it('frees the name for a new Label', () => {
+      let board = applyAction(boardWithLabels(), { type: 'deleteLabel', labelId: 'bug' }, later);
+      board = applyAction(board, { type: 'attachLabel', taskId: 't3', name: 'bug', newLabelId: 'bug-2' }, later);
+      expect(board.labels.find((label) => label.id === 'bug-2')?.name).toBe('bug');
+    });
+
+    it('leaves the Board unchanged for an unknown Label', () => {
+      const before = boardWithLabels();
+      expect(applyAction(before, { type: 'deleteLabel', labelId: 'nope' }, later)).toBe(before);
+    });
   });
 });
 
