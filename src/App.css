@@ -458,23 +458,28 @@ body {
   list-style: none;
 }
 
+/* Two lines: chip and name (plus any error), then colors, usage and Delete. */
 .label-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  grid-template-areas:
+    'chip name name name'
+    'error error error error'
+    'colors colors usage delete';
   align-items: center;
-  gap: 8px 12px;
+  column-gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
 
 .label-row .label-chip {
-  min-width: 48px;
-  justify-content: center;
+  grid-area: chip;
+  justify-self: start;
 }
 
 .label-rename {
+  grid-area: name;
   display: flex;
-  flex: 1 1 140px;
 }
 
 .label-rename input {
@@ -493,15 +498,17 @@ body {
 }
 
 .label-error {
-  flex-basis: 100%;
-  margin: 0;
+  grid-area: error;
+  margin: 4px 0 0;
   color: var(--overdue);
   font-size: 0.8125rem;
 }
 
 .label-colors {
+  grid-area: colors;
   display: flex;
-  gap: 4px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 /* Each palette color is a round swatch; the picked one gets a ring. */
@@ -525,9 +532,15 @@ body {
 }
 
 .label-usage {
+  grid-area: usage;
+  margin-top: 10px;
   color: var(--muted);
   font-size: 0.8125rem;
-  min-width: 88px;
+}
+
+.label-row > .button {
+  grid-area: delete;
+  margin-top: 10px;
 }
 
 /* Task details in the Column (ticket 05) */
