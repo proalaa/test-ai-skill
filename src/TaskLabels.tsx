@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { labelsOf, type Board, type Task } from './board/board';
+import type { NewId } from './ids';
 import { LabelChip } from './LabelChip';
 import type { Dispatch } from './useBoard';
 
@@ -7,6 +8,8 @@ interface TaskLabelsProps {
   task: Task;
   board: Board;
   dispatch: Dispatch;
+  /** The id for a Label created from a new name. */
+  newId: NewId;
 }
 
 /**
@@ -14,7 +17,7 @@ interface TaskLabelsProps {
  * button each, and an input that attaches a Label by name (Enter). A new name
  * creates the Label; an existing one, in any case, is reused.
  */
-export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
+export function TaskLabels({ task, board, dispatch, newId }: TaskLabelsProps) {
   const id = useId();
   const [name, setName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +27,7 @@ export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
   function attach(event: FormEvent) {
     event.preventDefault();
     if (name.trim() === '') return;
-    dispatch({ type: 'attachLabel', taskId: task.id, name, newLabelId: crypto.randomUUID() });
+    dispatch({ type: 'attachLabel', taskId: task.id, name, newLabelId: newId() });
     setName('');
   }
 

@@ -1,6 +1,7 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { fixedClock } from './test/clocks';
+import { sequentialIds } from './test/ids';
 import { memoryKeyValueStore } from './test/memoryKeyValueStore';
 import { addTaskInput, column, taskTitles } from './test/queries';
 import { renderApp } from './test/renderApp';
@@ -101,12 +102,13 @@ describe('Autosave', () => {
     expect(taskTitles('Done')).toEqual(['B']);
   });
 
-  it('stamps Created at and Updated at from the injected clock', async () => {
-    const { user, saved } = renderApp({ clock: fixedClock('2026-03-04T05:06:07.000Z') });
+  it('stamps Created at and Updated at from the injected clock, and takes the id from the injected id source', async () => {
+    const { user, saved } = renderApp({ clock: fixedClock('2026-03-04T05:06:07.000Z'), newId: sequentialIds('new') });
 
     await user.type(addTaskInput('To Do'), 'Timed{Enter}');
 
     const [task] = saved().tasks;
+    expect(task.id).toBe('new-1');
     expect(task.createdAt).toBe('2026-03-04T05:06:07.000Z');
     expect(task.updatedAt).toBe('2026-03-04T05:06:07.000Z');
   });

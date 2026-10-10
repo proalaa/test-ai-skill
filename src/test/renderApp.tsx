@@ -3,27 +3,37 @@ import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import type { Board } from '../board/board';
 import type { Clock } from '../clock';
+import type { NewId } from '../ids';
 import { createBoardStorage, type KeyValueStore } from '../storage/boardStorage';
 import { fixedClock } from './clocks';
+import { sequentialIds } from './ids';
 import { memoryKeyValueStore } from './memoryKeyValueStore';
 
 export const DEFAULT_NOW = '2026-10-10T09:00:00.000Z';
+
+/** Shared by every render, so a reloaded app never reuses an id. */
+const testIds = sequentialIds('test-id');
 
 export interface RenderAppOptions {
   /** Backing key/value store; pass the same one to a second render to simulate a reload. */
   store?: KeyValueStore;
   clock?: Clock;
+  newId?: NewId;
 }
 
 /**
  * Renders the whole app the way a user sees it, with in-memory storage and a
- * fixed clock. Returns the Testing Library queries plus a `user` for driving it
+ * fixed clock and ids. Returns the Testing Library queries plus a `user` for driving it
  * and `saved()` for the Board as saved right now.
  */
-export function renderApp({ store = memoryKeyValueStore(), clock = fixedClock(DEFAULT_NOW) }: RenderAppOptions = {}) {
+export function renderApp({
+  store = memoryKeyValueStore(),
+  clock = fixedClock(DEFAULT_NOW),
+  newId = testIds,
+}: RenderAppOptions = {}) {
   const storage = createBoardStorage(store);
   const user = userEvent.setup();
-  const result = render(<App storage={storage} clock={clock} />);
+  const result = render(<App storage={storage} clock={clock} newId={newId} />);
   return { ...result, user, store, storage, clock, saved: () => savedBoard(store) };
 }
 

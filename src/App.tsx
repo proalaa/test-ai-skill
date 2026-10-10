@@ -1,25 +1,28 @@
 import { useState, type FormEvent } from 'react';
-import { STATUSES, localDate, type Label, type LocalDate, type Status, type Task } from './board/board';
+import { STATUSES, labelsOf, localDate, type Label, type LocalDate, type Status, type Task } from './board/board';
 import { BoardTransfer } from './BoardTransfer';
 import { ManageLabels } from './ManageLabels';
 import type { Clock } from './clock';
+import type { NewId } from './ids';
 import { MovableColumnTasks, MovableTasks, useColumnDropTarget } from './MovableTasks';
 import type { BoardStorage } from './storage/boardStorage';
 import { TaskSummary } from './TaskSummary';
 import { TaskModal } from './TaskModal';
-import { useBoard, type Dispatch } from './useBoard';
+import { useBoard } from './useBoard';
 import './App.css';
 
 export interface AppProps {
   storage: BoardStorage;
   clock: Clock;
+  newId: NewId;
 }
 
 /**
- * The top level of the app. The only place that holds storage and the clock;
- * nothing below it reads localStorage or the system time directly.
+ * The top level of the app. The only place that holds storage, the clock and
+ * the id source; nothing below it reads localStorage, the system time or makes
+ * ids of its own.
  */
-export function App({ storage, clock }: AppProps) {
+export function App({ storage, clock, newId }: AppProps) {
   const [board, dispatch, replaceBoard, loadProblem] = useBoard(storage, clock);
   const [showLoadProblem, setShowLoadProblem] = useState(true);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
@@ -56,18 +59,25 @@ export function App({ storage, clock }: AppProps) {
                 key={status.id}
                 status={status}
                 tasks={tasksOf(status.id)}
-                dispatch={dispatch}
+                onAddTask={(title) => dispatch({ type: 'addTask', id: newId(), status: status.id, title })}
                 showHint={boardIsEmpty && status === STATUSES[0]}
                 onOpenTask={setOpenTaskId}
                 today={today}
-                labels={board.labels}
+                labelsOf={(task) => labelsOf(board, task)}
               />
             ))
           }
         </MovableTasks>
       </main>
       {openTask && (
-        <TaskModal key={openTask.id} task={openTask} board={board} dispatch={dispatch} onClose={() => setOpenTaskId(null)} />
+        <TaskModal
+          key={openTask.id}
+          task={openTask}
+          board={board}
+          dispatch={dispatch}
+          newId={newId}
+          onClose={() => setOpenTaskId(null)}
+        />
       )}
       {managingLabels && <ManageLabels board={board} dispatch={dispatch} onClose={() => setManagingLabels(false)} />}
     </>
@@ -78,16 +88,17 @@ interface ColumnProps {
   status: Status;
   /** The Tasks shown in this Column, top first. */
   tasks: Task[];
-  dispatch: Dispatch;
+  /** Adds a Task with this title to the bottom of the Column; returns whether it was added. */
+  onAddTask: (title: string) => boolean;
   showHint: boolean;
   onOpenTask: (id: string) => void;
   /** The user's local date, for showing Overdue Tasks. */
   today: LocalDate;
-  /** Every Label on the Board, for the Label chips. */
-  labels: Label[];
+  /** The Labels a Task carries, for its Label chips. */
+  labelsOf: (task: Task) => Label[];
 }
 
-function Column({ status, tasks, dispatch, showHint, onOpenTask, today, labels }: ColumnProps) {
+function Column({ status, tasks, onAddTask, showHint, onOpenTask, today, labelsOf }: ColumnProps) {
   const dropTargetRef = useColumnDropTarget(status.id);
   return (
     <section ref={dropTargetRef} className="column" aria-label={status.name}>
@@ -102,9 +113,9 @@ function Column({ status, tasks, dispatch, showHint, onOpenTask, today, labels }
         status={status.id}
         tasks={tasks}
         onOpenTask={onOpenTask}
-        renderTask={(task) => <TaskSummary task={task} today={today} labels={labels} />}
+        renderTask={(task) => <TaskSummary task={task} today={today} labels={labelsOf(task)} />}
       />
-      <QuickAdd onAdd={(title) => dispatch({ type: 'addTask', id: crypto.randomUUID(), status: status.id, title })} />
+      <QuickAdd onAdd={onAddTask} />
     </section>
   );
 }

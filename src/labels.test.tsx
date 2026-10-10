@@ -2,6 +2,7 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { task } from './test/boards';
+import { sequentialIds } from './test/ids';
 import { openTask, taskItem, taskModal as modal } from './test/queries';
 import { renderApp, renderAppWith, type User } from './test/renderApp';
 
@@ -18,7 +19,10 @@ async function attachLabel(user: User, name: string) {
 
 describe('Attaching Labels in the task modal', () => {
   it('creates a Label from a new name with a palette color and shows it as a chip on the Task', async () => {
-    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Fix login' })] });
+    const { user, saved } = renderAppWith(
+      { labels: [], tasks: [task({ id: 't1', title: 'Fix login' })] },
+      { newId: sequentialIds('new') },
+    );
 
     await openTask(user, 'Fix login');
     await attachLabel(user, 'Bug');
@@ -27,7 +31,7 @@ describe('Attaching Labels in the task modal', () => {
     expect(within(modal()).getByLabelText('Add label')).toHaveValue('');
     const chip = within(taskItem('Fix login', 'To Do')).getByText('Bug');
     expect(chip).toHaveStyle({ backgroundColor: '#0c66e4' });
-    expect(saved().labels).toEqual([{ id: expect.any(String), name: 'Bug', color: '#0c66e4' }]);
+    expect(saved().labels).toEqual([{ id: 'new-1', name: 'Bug', color: '#0c66e4' }]);
   });
 
   it('reuses an existing Label when the name is typed in another case, creating no duplicate', async () => {

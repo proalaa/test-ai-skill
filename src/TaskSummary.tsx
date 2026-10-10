@@ -1,11 +1,11 @@
-import { hasPriority, isOverdue, labelsOf, priorityName, type Label, type LocalDate, type Task } from './board/board';
+import { hasPriority, isOverdue, priorityName, type Label, type LocalDate, type Task } from './board/board';
 import { LabelChips } from './LabelChip';
 
 export interface TaskSummaryProps {
   task: Task;
   /** The user's local date, from the injected clock. Decides Overdue. */
   today: LocalDate;
-  /** Every Label on the Board; the Task's own are shown as chips. */
+  /** The Labels the Task carries, shown as chips in this order. */
   labels: Label[];
 }
 
@@ -31,7 +31,7 @@ export function TaskSummary({ task, today, labels }: TaskSummaryProps) {
           {hasDescription && <DescriptionIcon />}
         </span>
       )}
-      <LabelChips labels={labelsOf({ labels }, task)} />
+      <LabelChips labels={labels} />
     </>
   );
 }
