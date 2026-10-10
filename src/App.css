@@ -82,6 +82,19 @@ body {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px;
+  cursor: grab;
+  /* Lets dnd-kit's pointer sensor handle touch drags instead of scrolling. */
+  touch-action: none;
+}
+
+.task:focus-visible {
+  outline: 2px solid #4c9aff;
+  outline-offset: 1px;
+}
+
+.task-dragging {
+  opacity: 0.5;
+  cursor: grabbing;
 }
 
 .quick-add {
