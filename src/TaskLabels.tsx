@@ -1,5 +1,6 @@
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useRef, useState, type FormEvent } from 'react';
 import { labelsOf, type Board, type Task } from './board/board';
+import type { NewId } from './ids';
 import { LabelChip } from './LabelChip';
 import type { Dispatch } from './useBoard';
 
@@ -7,6 +8,8 @@ interface TaskLabelsProps {
   task: Task;
   board: Board;
   dispatch: Dispatch;
+  /** The id for a Label created from a new name. */
+  newId: NewId;
 }
 
 /**
@@ -14,17 +17,24 @@ interface TaskLabelsProps {
  * button each, and an input that attaches a Label by name (Enter). A new name
  * creates the Label; an existing one, in any case, is reused.
  */
-export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
+export function TaskLabels({ task, board, dispatch, newId }: TaskLabelsProps) {
   const id = useId();
   const [name, setName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const attached = labelsOf(board, task);
   const suggestions = board.labels.filter((label) => !task.labelIds.includes(label.id));
 
   function attach(event: FormEvent) {
     event.preventDefault();
     if (name.trim() === '') return;
-    dispatch({ type: 'attachLabel', taskId: task.id, name, newLabelId: crypto.randomUUID() });
+    dispatch({ type: 'attachLabel', taskId: task.id, name, newLabelId: newId() });
     setName('');
+  }
+
+  function detach(labelId: string) {
+    // The remove button goes away with its chip, so keep focus in the modal first.
+    inputRef.current?.focus();
+    dispatch({ type: 'detachLabel', taskId: task.id, labelId });
   }
 
   return (
@@ -42,7 +52,7 @@ export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
                     type="button"
                     className="label-chip-remove"
                     aria-label={`Remove label ${label.name}`}
-                    onClick={() => dispatch({ type: 'detachLabel', taskId: task.id, labelId: label.id })}
+                    onClick={() => detach(label.id)}
                   >
                     ×
                   </button>
@@ -53,6 +63,7 @@ export function TaskLabels({ task, board, dispatch }: TaskLabelsProps) {
         )}
         <form className="label-add" onSubmit={attach}>
           <input
+            ref={inputRef}
             aria-label="Add label"
             placeholder="Add a label…"
             list={`${id}-suggestions`}

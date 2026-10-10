@@ -1,51 +1,11 @@
 // App-level tests for the task modal: editing and deleting a Task.
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Board, Task } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { manualClock } from './test/manualClock';
-import { renderApp } from './test/renderApp';
-
-function column(name: string) {
-  return screen.getByRole('region', { name });
-}
-
-function taskTitles(columnName: string) {
-  return within(column(columnName))
-    .queryAllByRole('listitem')
-    .map((item) => item.textContent);
-}
-
-function modal() {
-  return screen.getByRole('dialog', { name: /task details/i });
-}
-
-function task(fields: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
-  return {
-    description: '',
-    status: 'todo',
-    position: 0,
-    priority: 'none',
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-02T08:00:00.000Z',
-    completedAt: null,
-    ...fields,
-  };
-}
-
-/** Renders the app over a Board that is already saved in storage. */
-function renderAppWith(board: Board, options: Parameters<typeof renderApp>[0] = {}) {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(board);
-  return renderApp({ ...options, store });
-}
-
-async function openTask(user: ReturnType<typeof renderApp>['user'], title: string) {
-  await user.click(screen.getByText(title));
-  return modal();
-}
+import type { Board } from './board/board';
+import { task } from './test/boards';
+import { manualClock } from './test/clocks';
+import { column, openTask, taskModal as modal, taskTitles } from './test/queries';
+import { renderApp, renderAppWith, type User } from './test/renderApp';
 
 describe('Opening a Task', () => {
   it('shows every field of the clicked Task in a modal', async () => {
@@ -108,14 +68,14 @@ describe('Keyboard use of the modal', () => {
   });
 
   it('reverts a cleared title when closed with Escape', async () => {
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Abc' })] });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Abc' })] });
     await openTask(user, 'Abc');
 
     await user.keyboard('{End}{Backspace}{Backspace}{Backspace}{Escape}');
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['Abc']);
-    expect(storage.load()!.tasks[0].title).toBe('Abc');
+    expect(saved().tasks[0].title).toBe('Abc');
   });
 
   it('keeps focus inside the modal when tabbing past either end', async () => {
@@ -131,6 +91,76 @@ describe('Keyboard use of the modal', () => {
       expect(dialog).toContainElement(document.activeElement as HTMLElement);
     }
   });
+
+  describe('after removing a Label chip', () => {
+    function withLabel(): Board {
+      return {
+        labels: [{ id: 'bug', name: 'Bug', color: '#c9372c' }],
+        tasks: [task({ id: 't1', title: 'Chipped', labelIds: ['bug'] })],
+      };
+    }
+
+    async function removeChip(user: User) {
+      const dialog = await openTask(user, 'Chipped');
+      await user.click(within(dialog).getByRole('button', { name: /remove label bug/i }));
+      return dialog;
+    }
+
+    it('keeps focus inside the modal', async () => {
+      const { user } = renderAppWith(withLabel());
+      const dialog = await removeChip(user);
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    });
+
+    it('still closes on Escape', async () => {
+      const { user } = renderAppWith(withLabel());
+      await removeChip(user);
+
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('still keeps Tab inside the modal', async () => {
+      const { user } = renderAppWith(withLabel());
+      const dialog = await removeChip(user);
+
+      for (let i = 0; i < 12; i++) {
+        await user.tab();
+        expect(dialog).toContainElement(document.activeElement as HTMLElement);
+      }
+    });
+  });
+
+  describe('when focus has somehow left the modal', () => {
+    function blurEverything() {
+      (document.activeElement as HTMLElement | null)?.blur();
+      expect(document.activeElement).toBe(document.body);
+    }
+
+    it('still closes on Escape', async () => {
+      const { user } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Lost' })] });
+      await openTask(user, 'Lost');
+      blurEverything();
+
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['Tab', false],
+      ['Shift+Tab', true],
+    ])('brings focus back into the modal on %s', async (_, shift) => {
+      const { user } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Lost' })] });
+      const dialog = await openTask(user, 'Lost');
+      blurEverything();
+
+      await user.tab({ shift });
+
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    });
+  });
 });
 
 describe('Editing a Task in the modal', () => {
@@ -144,7 +174,7 @@ describe('Editing a Task in the modal', () => {
     await first.user.type(within(dialog).getByLabelText('Due date'), '2026-11-03');
 
     // Saved already, with no Save button involved.
-    expect(first.storage.load()!.tasks[0]).toMatchObject({
+    expect(first.saved().tasks[0]).toMatchObject({
       title: 'Draft plan',
       description: 'First line\nSecond line',
       priority: 'urgent',
@@ -162,7 +192,7 @@ describe('Editing a Task in the modal', () => {
   });
 
   it('clears the Due date', async () => {
-    const { user, storage } = renderAppWith({
+    const { user, saved } = renderAppWith({
       labels: [],
       tasks: [task({ id: 't1', title: 'Dated', dueDate: '2026-10-20' })],
     });
@@ -171,22 +201,22 @@ describe('Editing a Task in the modal', () => {
     await user.click(within(dialog).getByRole('button', { name: /clear due date/i }));
 
     expect(within(dialog).getByLabelText('Due date')).toHaveValue('');
-    expect(storage.load()!.tasks[0].dueDate).toBeNull();
+    expect(saved().tasks[0].dueDate).toBeNull();
   });
 
   it('changes Updated at on every edit and shows it in the modal', async () => {
     const clock = manualClock('2026-10-10T09:00:00.000Z');
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Timed' })] }, { clock });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Timed' })] }, { clock });
     const dialog = await openTask(user, 'Timed');
 
     clock.set('2026-10-10T10:00:00.000Z');
     await user.selectOptions(within(dialog).getByLabelText('Priority'), 'Low');
-    expect(storage.load()!.tasks[0].updatedAt).toBe('2026-10-10T10:00:00.000Z');
+    expect(saved().tasks[0].updatedAt).toBe('2026-10-10T10:00:00.000Z');
     expect(within(dialog).getByLabelText('Updated at')).toHaveAttribute('datetime', '2026-10-10T10:00:00.000Z');
 
     clock.set('2026-10-10T11:30:00.000Z');
     await user.type(within(dialog).getByLabelText('Description'), 'x');
-    expect(storage.load()!.tasks[0].updatedAt).toBe('2026-10-10T11:30:00.000Z');
+    expect(saved().tasks[0].updatedAt).toBe('2026-10-10T11:30:00.000Z');
     expect(within(dialog).getByLabelText('Updated at')).toHaveAttribute('datetime', '2026-10-10T11:30:00.000Z');
     expect(within(dialog).getByLabelText('Created at')).toHaveAttribute('datetime', '2026-10-01T08:00:00.000Z');
   });
@@ -205,7 +235,7 @@ describe('Deleting a Task from the modal', () => {
   }
 
   it('asks for confirmation before deleting', async () => {
-    const { user, storage } = renderAppWith(twoTasks());
+    const { user, saved } = renderAppWith(twoTasks());
     const dialog = await openTask(user, 'Doomed');
 
     await user.click(within(dialog).getByRole('button', { name: /delete task/i }));
@@ -213,12 +243,12 @@ describe('Deleting a Task from the modal', () => {
     expect(confirmation()).toBeInTheDocument();
     expect(within(confirmation()).getByRole('button', { name: /cancel/i })).toHaveFocus();
     expect(taskTitles('To Do')).toEqual(['Doomed', 'Survivor']);
-    expect(storage.load()!.tasks).toHaveLength(2);
+    expect(saved().tasks).toHaveLength(2);
   });
 
   it('leaves the Task untouched and the modal open when the confirmation is cancelled', async () => {
-    const { user, storage } = renderAppWith(twoTasks());
-    const before = storage.load();
+    const { user, saved } = renderAppWith(twoTasks());
+    const before = saved();
     const dialog = await openTask(user, 'Doomed');
 
     await user.click(within(dialog).getByRole('button', { name: /delete task/i }));
@@ -227,7 +257,7 @@ describe('Deleting a Task from the modal', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(modal()).toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['Doomed', 'Survivor']);
-    expect(storage.load()).toEqual(before);
+    expect(saved()).toEqual(before);
   });
 
   it('cancels only the confirmation on Escape, keeping the modal open', async () => {
@@ -262,7 +292,7 @@ describe('Deleting a Task from the modal', () => {
 
 describe('Clearing the title in the modal', () => {
   it('reverts to the previous title when the title field loses focus', async () => {
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Keep me' })] });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Keep me' })] });
     const dialog = await openTask(user, 'Keep me');
     const titleInput = within(dialog).getByLabelText('Title');
 
@@ -271,12 +301,12 @@ describe('Clearing the title in the modal', () => {
     await user.tab();
 
     expect(titleInput).toHaveValue('Keep me');
-    expect(storage.load()!.tasks[0].title).toBe('Keep me');
+    expect(saved().tasks[0].title).toBe('Keep me');
     expect(taskTitles('To Do')).toEqual(['Keep me']);
   });
 
   it('reverts to the title from before editing even when deleted one character at a time', async () => {
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Abc' })] });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Abc' })] });
     const dialog = await openTask(user, 'Abc');
     const titleInput = within(dialog).getByLabelText('Title');
 
@@ -286,11 +316,11 @@ describe('Clearing the title in the modal', () => {
     await user.tab();
 
     expect(titleInput).toHaveValue('Abc');
-    expect(storage.load()!.tasks[0].title).toBe('Abc');
+    expect(saved().tasks[0].title).toBe('Abc');
   });
 
   it('reverts to the previous title when the modal is closed', async () => {
-    const { user, storage } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Abc' })] });
+    const { user, saved } = renderAppWith({ labels: [], tasks: [task({ id: 't1', title: 'Abc' })] });
     const dialog = await openTask(user, 'Abc');
 
     await user.click(within(dialog).getByLabelText('Title'));
@@ -299,6 +329,6 @@ describe('Clearing the title in the modal', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['Abc']);
-    expect(storage.load()!.tasks[0].title).toBe('Abc');
+    expect(saved().tasks[0].title).toBe('Abc');
   });
 });

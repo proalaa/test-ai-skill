@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixedClock } from '../clock';
+import { fixedClock } from '../test/clocks';
 import {
   STATUSES,
   applyAction,
@@ -157,6 +157,27 @@ describe('Board data format', () => {
   it('rejects two Tasks with the same id', () => {
     const text = withFirstTask({ id: 't2' });
     expect(importBoard(text).ok).toBe(false);
+  });
+
+  /** fullBoard exported with extra To Do Tasks added after the existing ones. */
+  function withExtraToDoTasks(...positions: number[]): string {
+    const [, plan] = fullBoard.tasks;
+    const extra = positions.map((position, i) => ({ ...plan, id: `extra${i}`, title: `Extra ${i}`, position }));
+    return JSON.stringify({ version: 1, board: { ...fullBoard, tasks: [...fullBoard.tasks, ...extra] } });
+  }
+
+  it('rejects two Tasks with the same position in a Column', () => {
+    expect(importBoard(withExtraToDoTasks(0))).toEqual({ ok: false, error: expect.stringMatching(/position/i) });
+  });
+
+  it('rejects a gap in the positions of a Column', () => {
+    expect(importBoard(withExtraToDoTasks(2))).toEqual({ ok: false, error: expect.stringMatching(/position/i) });
+  });
+
+  it('accepts positions 0..n-1 in each Column, in any order in the file', () => {
+    const result = importBoard(withExtraToDoTasks(2, 1));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(tasksIn(result.board, 'todo').map((t) => t.title)).toEqual(['Plan tickets', 'Extra 1', 'Extra 0']);
   });
 
   it('rejects a Task carrying a Label that is not on the Board', () => {

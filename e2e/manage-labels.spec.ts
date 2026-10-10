@@ -1,18 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { addTask, shownTask, taskModal } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 });
-
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
-
-function taskModal(page: Page) {
-  return page.getByRole('dialog', { name: /task details/i });
-}
 
 function manageLabels(page: Page) {
   return page.getByRole('dialog', { name: /manage labels/i });
@@ -22,19 +15,13 @@ function labelRow(page: Page, name: string) {
   return manageLabels(page).getByRole('listitem', { name, exact: true });
 }
 
-function card(page: Page, title: string) {
-  return page.locator('.task').filter({ has: page.locator('.task-title', { hasText: title }) });
-}
-
-async function addTask(page: Page, columnName: string, title: string) {
-  const input = column(page, columnName).getByRole('textbox', { name: /add task/i });
-  await input.fill(title);
-  await input.press('Enter');
-  await expect(input).toHaveValue('');
+/** The Label chips a Task shows in its Column. */
+function labelChips(page: Page, title: string) {
+  return shownTask(page, title).getByRole('group', { name: 'Labels' });
 }
 
 async function attachLabels(page: Page, title: string, ...names: string[]) {
-  await card(page, title).click();
+  await shownTask(page, title).click();
   const input = taskModal(page).getByLabel('Add label');
   for (const name of names) {
     await input.fill(name);
@@ -51,7 +38,7 @@ test('Labels are renamed, recolored and deleted from the Manage labels screen, e
   await attachLabels(page, 'Fix login', 'Bug', 'UI', 'Docs');
   await attachLabels(page, 'Fix logout', 'Bug');
   // Docs stays on the Board unused.
-  await card(page, 'Fix login').click();
+  await shownTask(page, 'Fix login').click();
   await taskModal(page).getByRole('button', { name: /remove label docs/i }).click();
   await taskModal(page).getByRole('button', { name: 'Close' }).click();
 
@@ -74,7 +61,7 @@ test('Labels are renamed, recolored and deleted from the Manage labels screen, e
   await expect(manageLabels(page)).toHaveCount(0);
 
   for (const title of ['Fix login', 'Fix logout']) {
-    await expect(card(page, title).locator('.label-chip', { hasText: 'Defect' })).toHaveCSS(
+    await expect(labelChips(page, title).getByText('Defect', { exact: true })).toHaveCSS(
       'background-color',
       'rgb(201, 55, 44)',
     );
@@ -94,8 +81,8 @@ test('Labels are renamed, recolored and deleted from the Manage labels screen, e
   await manageLabels(page).getByRole('button', { name: 'Close' }).click();
 
   await page.reload();
-  await expect(card(page, 'Fix login').locator('.label-chip')).toHaveText(['UI']);
-  await expect(card(page, 'Fix logout').locator('.label-chip')).toHaveCount(0);
+  await expect(labelChips(page, 'Fix login')).toHaveText('UI');
+  await expect(labelChips(page, 'Fix logout')).toHaveCount(0);
   const saved = await page.evaluate(() => JSON.parse(window.localStorage.getItem('task-board') ?? '{}').board);
   expect(saved.labels.map((label: { name: string }) => label.name)).toEqual(['UI']);
   expect(saved.tasks.flatMap((task: { labelIds: string[] }) => task.labelIds)).toHaveLength(1);

@@ -1,26 +1,10 @@
 // App-level tests for the Manage labels screen: listing, renaming, recoloring and deleting Labels.
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { Board, Task } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
-import { renderApp } from './test/renderApp';
-
-type User = ReturnType<typeof renderApp>['user'];
-
-function task(fields: Partial<Task> & Pick<Task, 'id' | 'title'>): Task {
-  return {
-    description: '',
-    status: 'todo',
-    position: 0,
-    priority: 'none',
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-01T08:00:00.000Z',
-    completedAt: null,
-    ...fields,
-  };
-}
+import type { Board } from './board/board';
+import { task } from './test/boards';
+import { labelChipsOf } from './test/queries';
+import { renderAppWith, savedBoard, type User } from './test/renderApp';
 
 /** Fix login carries Bug and UI, Fix logout (Done) carries Bug, Write docs carries nothing. Docs is unused. */
 const board: Board = {
@@ -35,13 +19,6 @@ const board: Board = {
     task({ id: 't2', title: 'Fix logout', status: 'done', labelIds: ['bug'], completedAt: '2026-10-02T08:00:00.000Z' }),
   ],
 };
-
-/** Renders the app over a Board that is already saved in storage. */
-function renderAppWith(saved: Board) {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(saved);
-  return renderApp({ store });
-}
 
 function manageLabels() {
   return screen.getByRole('dialog', { name: /manage labels/i });
@@ -64,13 +41,9 @@ function listedLabelNames() {
     .map((row) => row.getAttribute('aria-label'));
 }
 
-/** The Label chips on a Task's card in the Column, as `[name, color]`. */
-function chipsOnCard(title: string) {
-  const card = screen
-    .getAllByRole('listitem')
-    .find((li) => li.querySelector('.task-title')?.textContent === title && !manageLabels().contains(li));
-  if (!card) throw new Error(`No Task card for “${title}”`);
-  return Array.from(card.querySelectorAll<HTMLElement>('.label-chip')).map((chip) => [chip.textContent, chip.style.backgroundColor]);
+/** The Label chips on a Task in its Column, as `[name, color]`. */
+function chipsOn(title: string) {
+  return labelChipsOf(title).map((chip) => [chip.textContent, getComputedStyle(chip).backgroundColor]);
 }
 
 describe('Manage labels screen', () => {
@@ -93,9 +66,9 @@ describe('Manage labels screen', () => {
     await user.type(name, 'Defect{Enter}');
 
     expect(listedLabelNames()).toEqual(['Defect', 'UI', 'Docs']);
-    expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['Defect', 'UI']);
-    expect(chipsOnCard('Fix logout').map(([n]) => n)).toEqual(['Defect']);
-    expect(createBoardStorage(store).load()?.labels.map((label) => label.name)).toEqual(['Defect', 'UI', 'Docs']);
+    expect(chipsOn('Fix login').map(([n]) => n)).toEqual(['Defect', 'UI']);
+    expect(chipsOn('Fix logout').map(([n]) => n)).toEqual(['Defect']);
+    expect(savedBoard(store).labels.map((label) => label.name)).toEqual(['Defect', 'UI', 'Docs']);
   });
 
   it('renames a Label when its name field loses focus', async () => {
@@ -109,7 +82,7 @@ describe('Manage labels screen', () => {
 
     expect(listedLabelNames()).toEqual(['Bug', 'Frontend', 'Docs']);
     expect(within(labelRow('Frontend')).getByLabelText('Name')).toHaveValue('Frontend');
-    expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['Bug', 'Frontend']);
+    expect(chipsOn('Fix login').map(([n]) => n)).toEqual(['Bug', 'Frontend']);
   });
 
   it('rejects a rename that clashes with another Label ignoring case, with a message, until the name is fixed', async () => {
@@ -125,8 +98,8 @@ describe('Manage labels screen', () => {
     expect(name).toHaveAttribute('aria-invalid', 'true');
     expect(name).toHaveValue('ui');
     expect(listedLabelNames()).toEqual(['Bug', 'UI', 'Docs']);
-    expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['Bug', 'UI']);
-    expect(createBoardStorage(store).load()?.labels.map((label) => label.name)).toEqual(['Bug', 'UI', 'Docs']);
+    expect(chipsOn('Fix login').map(([n]) => n)).toEqual(['Bug', 'UI']);
+    expect(savedBoard(store).labels.map((label) => label.name)).toEqual(['Bug', 'UI', 'Docs']);
 
     await user.type(name, 'x{Enter}');
     expect(within(manageLabels()).queryByRole('alert')).not.toBeInTheDocument();
@@ -166,13 +139,13 @@ describe('Manage labels screen', () => {
     await user.click(within(colors).getByRole('radio', { name: 'Red' }));
 
     expect(within(colors).getByRole('radio', { name: 'Red' })).toBeChecked();
-    expect(labelRow('Bug').querySelector('.label-chip')).toHaveStyle({ backgroundColor: '#c9372c' });
-    expect(chipsOnCard('Fix login')).toEqual([
+    expect(within(labelRow('Bug')).getByText('Bug')).toHaveStyle({ backgroundColor: '#c9372c' });
+    expect(chipsOn('Fix login')).toEqual([
       ['Bug', 'rgb(201, 55, 44)'],
       ['UI', 'rgb(31, 132, 90)'],
     ]);
-    expect(chipsOnCard('Fix logout')).toEqual([['Bug', 'rgb(201, 55, 44)']]);
-    expect(createBoardStorage(store).load()?.labels[0]).toEqual({ id: 'bug', name: 'Bug', color: '#c9372c' });
+    expect(chipsOn('Fix logout')).toEqual([['Bug', 'rgb(201, 55, 44)']]);
+    expect(savedBoard(store).labels[0]).toEqual({ id: 'bug', name: 'Bug', color: '#c9372c' });
   });
 
   describe('deleting a Label', () => {
@@ -187,11 +160,11 @@ describe('Manage labels screen', () => {
 
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
       expect(listedLabelNames()).toEqual(['UI', 'Docs']);
-      expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['UI']);
-      expect(chipsOnCard('Fix logout')).toEqual([]);
-      const saved = createBoardStorage(store).load();
-      expect(saved?.labels.map((label) => label.name)).toEqual(['UI', 'Docs']);
-      expect(saved?.tasks.flatMap((t) => t.labelIds)).toEqual(['ui']);
+      expect(chipsOn('Fix login').map(([n]) => n)).toEqual(['UI']);
+      expect(chipsOn('Fix logout')).toEqual([]);
+      const afterDelete = savedBoard(store);
+      expect(afterDelete.labels.map((label) => label.name)).toEqual(['UI', 'Docs']);
+      expect(afterDelete.tasks.flatMap((t) => t.labelIds)).toEqual(['ui']);
       // Focus stays on the Manage labels screen.
       expect(manageLabels()).toContainElement(document.activeElement as HTMLElement);
     });
@@ -220,7 +193,7 @@ describe('Manage labels screen', () => {
       expect(manageLabels()).toBeInTheDocument();
 
       expect(listedLabelNames()).toEqual(['Bug', 'UI', 'Docs']);
-      expect(chipsOnCard('Fix login').map(([n]) => n)).toEqual(['Bug', 'UI']);
+      expect(chipsOn('Fix login').map(([n]) => n)).toEqual(['Bug', 'UI']);
       expect(store.getItem('task-board')).toBe(savedBefore);
     });
 
@@ -234,7 +207,7 @@ describe('Manage labels screen', () => {
       await user.click(within(confirm).getByRole('button', { name: 'Delete label' }));
 
       expect(listedLabelNames()).toEqual(['Bug', 'UI']);
-      expect(createBoardStorage(store).load()?.labels.map((label) => label.name)).toEqual(['Bug', 'UI']);
+      expect(savedBoard(store).labels.map((label) => label.name)).toEqual(['Bug', 'UI']);
     });
   });
 

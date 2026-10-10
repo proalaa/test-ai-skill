@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { fixedClock } from './clock';
+import { fixedClock } from './test/clocks';
 import { renderApp } from './test/renderApp';
-import { addTasks, keyboardMove, taskCount, taskItem, taskTitles } from './test/queries';
+import { addTasks, keyboardMove, taskCount, shownTask, taskTitles } from './test/queries';
 
 describe('Moving Tasks with the keyboard', () => {
   it('reorders a Task down within its Column', async () => {
@@ -67,30 +67,30 @@ describe('Moving Tasks with the keyboard', () => {
   });
 
   it('leaves the Board as it was when the move is cancelled with Escape', async () => {
-    const { user, storage } = renderApp();
+    const { user, saved } = renderApp();
     await addTasks(user, 'To Do', 'A', 'B');
-    const saved = storage.load();
+    const before = saved();
 
     await keyboardMove(user, 'A', '{ArrowRight}{Escape}');
 
     expect(taskTitles('To Do')).toEqual(['A', 'B']);
     expect(taskTitles('In Progress')).toEqual([]);
-    expect(storage.load()).toEqual(saved);
+    expect(saved()).toEqual(before);
   });
 
   it('records Completed at when a Task moves into Done and clears it when it moves out', async () => {
     let now = '2026-10-10T09:00:00.000Z';
     const clock = { now: () => new Date(now) };
-    const { user, storage } = renderApp({ clock });
+    const { user, saved } = renderApp({ clock });
     await addTasks(user, 'In Progress', 'Ship it');
 
     now = '2026-10-11T15:30:00.000Z';
     await keyboardMove(user, 'Ship it', '{ArrowRight}');
-    expect(storage.load()!.tasks[0]).toMatchObject({ status: 'done', completedAt: '2026-10-11T15:30:00.000Z' });
+    expect(saved().tasks[0]).toMatchObject({ status: 'done', completedAt: '2026-10-11T15:30:00.000Z' });
 
     now = '2026-10-12T08:00:00.000Z';
     await keyboardMove(user, 'Ship it', '{ArrowLeft}');
-    expect(storage.load()!.tasks[0]).toMatchObject({ status: 'in-progress', completedAt: null });
+    expect(saved().tasks[0]).toMatchObject({ status: 'in-progress', completedAt: null });
   });
 
   it('opens a focused Task with Enter, while Space picks it up instead', async () => {
@@ -101,7 +101,7 @@ describe('Moving Tasks with the keyboard', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['B', 'A']);
 
-    taskItem('B').focus();
+    shownTask('B').focus();
     await user.keyboard('{Enter}');
     expect(screen.getByRole('dialog', { name: /task details/i })).toBeInTheDocument();
     expect(within(screen.getByRole('dialog')).getByLabelText('Title')).toHaveValue('B');

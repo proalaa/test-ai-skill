@@ -4,7 +4,7 @@
   --fg: #172b4d;
   --muted: #5e6c84;
   --column-bg: #ebecf0;
-  --card-bg: #ffffff;
+  --task-bg: #ffffff;
   --border: #dfe1e6;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -15,7 +15,7 @@
     --fg: #e1e4e8;
     --muted: #9fadbc;
     --column-bg: #2c333a;
-    --card-bg: #22272b;
+    --task-bg: #22272b;
     --border: #3b444c;
   }
 }
@@ -68,7 +68,7 @@ body {
   font-size: 0.875rem;
 }
 
-.task-list {
+.column-tasks {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -78,7 +78,7 @@ body {
 }
 
 .task {
-  background: var(--card-bg);
+  background: var(--task-bg);
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px;
@@ -117,7 +117,7 @@ body {
 
 .quick-add-input:hover,
 .quick-add-input:focus {
-  background: var(--card-bg);
+  background: var(--task-bg);
   border-color: var(--border);
 }
 
@@ -148,7 +148,7 @@ body {
   padding: 6px 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--card-bg);
+  background: var(--task-bg);
   color: var(--fg);
   font: inherit;
   font-size: 0.875rem;
@@ -174,6 +174,15 @@ body {
   color: #c9372c;
   font-size: 0.875rem;
   text-align: right;
+}
+
+.load-problem {
+  margin: 0 1.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #c9372c;
+  border-radius: 6px;
+  color: #c9372c;
+  font-size: 0.875rem;
 }
 
 .link-button {
@@ -209,7 +218,7 @@ body {
   width: min(420px, calc(100vw - 32px));
   padding: 20px;
   border-radius: 8px;
-  background: var(--card-bg);
+  background: var(--task-bg);
   color: var(--fg);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.3);
 }
@@ -251,7 +260,7 @@ body {
 .modal {
   width: 100%;
   max-width: 560px;
-  background: var(--card-bg);
+  background: var(--task-bg);
   color: var(--fg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -523,7 +532,7 @@ body {
 }
 
 .label-color:checked {
-  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px var(--fg);
+  box-shadow: 0 0 0 2px var(--task-bg), 0 0 0 4px var(--fg);
 }
 
 .label-color:focus-visible {
@@ -547,6 +556,8 @@ body {
 
 .task-title {
   display: block;
+  margin: 0;
+  font: inherit;
   overflow-wrap: anywhere;
 }
 

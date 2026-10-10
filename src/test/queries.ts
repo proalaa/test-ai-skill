@@ -10,25 +10,48 @@ export function addTaskInput(columnName: string) {
   return within(column(columnName)).getByRole('textbox', { name: /add task/i });
 }
 
-/** The title of a Task's `<li>`, without its details or Label chips. */
-export function titleOf(item: HTMLElement) {
-  return item.querySelector('.task-title')?.textContent ?? item.textContent;
+/** The Tasks shown in a Column (its list items), top to bottom. */
+function tasksInColumn(columnName: string) {
+  return within(column(columnName)).queryAllByRole('listitem');
+}
+
+/** The title of a Task in its Column (its heading), without its details or Label chips. */
+export function titleOf(task: HTMLElement) {
+  return within(task).getByRole('heading').textContent;
 }
 
 /** The titles of the Tasks in a Column, top to bottom. */
 export function taskTitles(columnName: string) {
-  return within(column(columnName)).queryAllByRole('listitem').map(titleOf);
+  return tasksInColumn(columnName).map(titleOf);
 }
 
 export function taskCount(columnName: string) {
   return within(column(columnName)).getByLabelText('Task count').textContent;
 }
 
-/** The Task in the Board whose title is exactly `title`. */
-export function taskItem(title: string): HTMLElement {
-  const item = screen.getAllByRole('listitem').find((li) => titleOf(li) === title);
-  if (!item) throw new Error(`No Task titled "${title}" on the Board`);
-  return item;
+/** The Task on the Board (or in the named Column) whose title is exactly `title`. */
+export function shownTask(title: string, columnName?: string): HTMLElement {
+  const candidates = columnName ? tasksInColumn(columnName) : screen.getAllByRole('listitem');
+  const task = candidates.find((li) => within(li).queryByRole('heading', { name: title }));
+  if (!task) throw new Error(`No Task titled "${title}" ${columnName ? `in ${columnName}` : 'on the Board'}`);
+  return task;
+}
+
+/** The Label chips a Task shows in its Column, in order. */
+export function labelChipsOf(title: string): HTMLElement[] {
+  const labels = within(shownTask(title)).queryByRole('group', { name: 'Labels' });
+  return labels ? within(labels).getAllByText(/./) : [];
+}
+
+/** The open task modal. */
+export function taskModal() {
+  return screen.getByRole('dialog', { name: /task details/i });
+}
+
+/** Opens a Task's modal by clicking its title on the Board. */
+export async function openTask(user: UserEvent, title: string) {
+  await user.click(screen.getByText(title));
+  return taskModal();
 }
 
 /** Adds Tasks to a Column through its quick-add input. */
@@ -43,7 +66,7 @@ export async function addTasks(user: UserEvent, columnName: string, ...titles: s
  * given arrow keys (e.g. `'{ArrowDown}{ArrowRight}'`), then Space to drop.
  */
 export async function keyboardMove(user: UserEvent, title: string, arrows: string) {
-  taskItem(title).focus();
+  shownTask(title).focus();
   await user.keyboard(' ');
   await user.keyboard(arrows);
   await user.keyboard(' ');

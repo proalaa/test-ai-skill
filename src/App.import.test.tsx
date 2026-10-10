@@ -1,24 +1,12 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { exportBoard, type Board } from './board/board';
-import { createBoardStorage, memoryKeyValueStore } from './storage/boardStorage';
+import { exportBoard, type Board, type StatusId } from './board/board';
+import { task as taskWith } from './test/boards';
 import { taskTitles } from './test/queries';
-import { renderApp } from './test/renderApp';
+import { renderAppWith } from './test/renderApp';
 
-function task(id: string, title: string, status: Board['tasks'][number]['status'], position: number) {
-  return {
-    id,
-    title,
-    description: '',
-    status,
-    position,
-    priority: 'none' as const,
-    dueDate: null,
-    labelIds: [],
-    createdAt: '2026-10-01T08:00:00.000Z',
-    updatedAt: '2026-10-01T08:00:00.000Z',
-    completedAt: null,
-  };
+function task(id: string, title: string, status: StatusId, position: number) {
+  return taskWith({ id, title, status, position });
 }
 
 /** The Board the user already has before importing. */
@@ -38,9 +26,7 @@ const backupBoard: Board = {
 
 /** Renders the app with `currentBoard` already saved. */
 function renderWithCurrentBoard() {
-  const store = memoryKeyValueStore();
-  createBoardStorage(store).save(currentBoard);
-  return renderApp({ store });
+  return renderAppWith(currentBoard);
 }
 
 function jsonFile(text: string, name = 'backup.json') {
@@ -49,7 +35,7 @@ function jsonFile(text: string, name = 'backup.json') {
 
 describe('Importing a Board', () => {
   it('asks for confirmation, then replaces the whole Board and saves it', async () => {
-    const { user, storage } = renderWithCurrentBoard();
+    const { user, saved } = renderWithCurrentBoard();
 
     await user.upload(screen.getByLabelText(/import/i), jsonFile(exportBoard(backupBoard)));
 
@@ -63,14 +49,14 @@ describe('Importing a Board', () => {
     expect(taskTitles('To Do')).toEqual(['Restored two']);
     expect(taskTitles('In Progress')).toEqual([]);
     expect(taskTitles('Done')).toEqual(['Restored one']);
-    expect(storage.load()).toEqual(backupBoard);
+    expect(saved()).toEqual(backupBoard);
   });
 
   it.each([
     ['the Cancel button', '{Cancel}'],
     ['Escape', '{Escape}'],
   ])('changes nothing when cancelled with %s', async (_, how) => {
-    const { user, storage } = renderWithCurrentBoard();
+    const { user, saved } = renderWithCurrentBoard();
 
     await user.upload(screen.getByLabelText(/import/i), jsonFile(exportBoard(backupBoard)));
     const dialog = await screen.findByRole('alertdialog');
@@ -81,7 +67,7 @@ describe('Importing a Board', () => {
     expect(taskTitles('To Do')).toEqual(['Current A']);
     expect(taskTitles('In Progress')).toEqual(['Current B']);
     expect(taskTitles('Done')).toEqual([]);
-    expect(storage.load()).toEqual(currentBoard);
+    expect(saved()).toEqual(currentBoard);
   });
 
   it.each([
@@ -89,7 +75,7 @@ describe('Importing a Board', () => {
     ['the wrong shape', JSON.stringify({ version: 1, board: { tasks: 'none' } }), /tasks/i],
     ['an unknown version', JSON.stringify({ version: 2, board: backupBoard }), /version/i],
   ])('shows an error and leaves the Board unchanged for a file with %s', async (_, text, reason) => {
-    const { user, storage } = renderWithCurrentBoard();
+    const { user, saved } = renderWithCurrentBoard();
 
     await user.upload(screen.getByLabelText(/import/i), jsonFile(text, 'broken.json'));
 
@@ -99,7 +85,7 @@ describe('Importing a Board', () => {
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
     expect(taskTitles('To Do')).toEqual(['Current A']);
     expect(taskTitles('In Progress')).toEqual(['Current B']);
-    expect(storage.load()).toEqual(currentBoard);
+    expect(saved()).toEqual(currentBoard);
   });
 
   it('clears the error once a valid file is imported', async () => {

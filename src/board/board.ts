@@ -16,7 +16,21 @@ export const STATUSES: readonly Status[] = [
   { id: 'done', name: 'Done' },
 ];
 
-export type Priority = 'none' | 'low' | 'medium' | 'high' | 'urgent';
+/** The Priorities, lowest first, with the names the user sees. */
+export const PRIORITIES = [
+  { id: 'none', name: 'None' },
+  { id: 'low', name: 'Low' },
+  { id: 'medium', name: 'Medium' },
+  { id: 'high', name: 'High' },
+  { id: 'urgent', name: 'Urgent' },
+] as const;
+
+export type Priority = (typeof PRIORITIES)[number]['id'];
+
+/** The name the user sees for a Priority, e.g. "Urgent". */
+export function priorityName(priority: Priority): string {
+  return PRIORITIES.find((p) => p.id === priority)!.name;
+}
 
 /** A calendar day with no time of day, as `YYYY-MM-DD`. */
 export type LocalDate = string;
@@ -96,7 +110,7 @@ export function importBoard(text: string): ImportResult {
 
 const NOT_AN_EXPORT = 'The file is not a Task Board export.';
 const STATUS_IDS: readonly string[] = STATUSES.map((status) => status.id);
-const PRIORITIES: readonly string[] = ['none', 'low', 'medium', 'high', 'urgent'] satisfies Priority[];
+const PRIORITY_IDS: readonly string[] = PRIORITIES.map((priority) => priority.id);
 
 /** Thrown while reading imported data; its message says what is wrong. */
 class InvalidData extends Error {}
@@ -156,7 +170,7 @@ function readTask(data: unknown, name: string): Task {
     description: field('description', isText, 'a description that is not text'),
     status: field('status', (v): v is StatusId => isText(v) && STATUS_IDS.includes(v), 'an unknown Status'),
     position: field('position', (v): v is number => Number.isInteger(v) && (v as number) >= 0, 'an invalid position'),
-    priority: field('priority', (v): v is Priority => isText(v) && PRIORITIES.includes(v), 'an unknown Priority'),
+    priority: field('priority', (v): v is Priority => isText(v) && PRIORITY_IDS.includes(v), 'an unknown Priority'),
     dueDate: field('dueDate', (v): v is LocalDate | null => v === null || isLocalDate(v), 'an invalid Due date'),
     labelIds: field('labelIds', (v): v is string[] => Array.isArray(v) && v.every(isText), 'invalid Label ids'),
     createdAt: field('createdAt', isTimestamp, 'an invalid Created at'),
@@ -165,7 +179,10 @@ function readTask(data: unknown, name: string): Task {
   };
 }
 
-/** Checks the rules that span the Board: unique ids, unique Label names, no missing Labels. */
+/**
+ * Checks the rules that span the Board: unique ids, unique Label names, no
+ * missing Labels, and positions 0..n-1 in each Column.
+ */
 function checkConsistency({ tasks, labels }: Board): void {
   const labelIds = new Set<string>();
   const labelNames = new Set<string>();
@@ -183,6 +200,12 @@ function checkConsistency({ tasks, labels }: Board): void {
     const missing = task.labelIds.find((id) => !labelIds.has(id));
     if (missing !== undefined) {
       throw new InvalidData(`Task “${task.title}” carries a Label that is not on the Board (“${missing}”).`);
+    }
+  }
+  for (const status of STATUSES) {
+    const positions = tasksIn({ tasks, labels }, status.id).map((task) => task.position);
+    if (positions.some((position, index) => position !== index)) {
+      throw new InvalidData(`The Task positions in ${status.name} are not 0 to ${positions.length - 1} without repeats or gaps.`);
     }
   }
 }
@@ -272,16 +295,22 @@ export interface DeleteLabel {
   labelId: string;
 }
 
+/** A color in the Label palette: its CSS hex value and the name the user sees. */
+export interface PaletteColor {
+  hex: string;
+  name: string;
+}
+
 /** The fixed palette new Labels take their color from, in order. */
-export const LABEL_COLORS: readonly string[] = [
-  '#0c66e4', // blue
-  '#1f845a', // green
-  '#b65c02', // orange
-  '#6e5dc6', // purple
-  '#c9372c', // red
-  '#227d9b', // teal
-  '#ae4787', // magenta
-  '#626f86', // gray
+export const LABEL_PALETTE: readonly PaletteColor[] = [
+  { hex: '#0c66e4', name: 'Blue' },
+  { hex: '#1f845a', name: 'Green' },
+  { hex: '#b65c02', name: 'Orange' },
+  { hex: '#6e5dc6', name: 'Purple' },
+  { hex: '#c9372c', name: 'Red' },
+  { hex: '#227d9b', name: 'Teal' },
+  { hex: '#ae4787', name: 'Magenta' },
+  { hex: '#626f86', name: 'Gray' },
 ];
 
 /** The Board after `action` was applied at time `now`. Never mutates `board`. */
@@ -313,7 +342,7 @@ export function applyAction(board: Board, action: BoardAction, now: Date): Board
  * positions stay 0..n-1. A move to where the Task already is changes nothing.
  */
 function moveTask(board: Board, { id, status, position }: MoveTask, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === id);
+  const task = findTask(board, id);
   if (!task) return board;
 
   const target = tasksIn(board, status).filter((t) => t.id !== id);
@@ -335,8 +364,8 @@ function moveTask(board: Board, { id, status, position }: MoveTask, now: Date): 
 
 /** Entering Done records Completed at; leaving Done clears it; otherwise it is kept. */
 function completedAtAfterMove(task: Task, status: StatusId, now: Timestamp): Timestamp | null {
-  if (status !== 'done') return null;
-  return task.status === 'done' ? task.completedAt : now;
+  if (!isDone(status)) return null;
+  return isDone(task.status) ? task.completedAt : now;
 }
 
 /** Adds a Task at the bottom of its Column. A blank title adds nothing. */
@@ -366,7 +395,7 @@ function addTask(board: Board, { id, status, title }: AddTask, now: Date): Board
  * the Board is returned unchanged.
  */
 function updateTask(board: Board, { id, changes }: UpdateTask, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === id);
+  const task = findTask(board, id);
   if (!task) return board;
 
   const { title, ...rest } = changes;
@@ -376,13 +405,12 @@ function updateTask(board: Board, { id, changes }: UpdateTask, now: Date): Board
   const changed = (Object.keys(accepted) as (keyof TaskChanges)[]).some((field) => accepted[field] !== task[field]);
   if (!changed) return board;
 
-  const updated: Task = { ...task, ...accepted, updatedAt: now.toISOString() };
-  return { ...board, tasks: board.tasks.map((t) => (t.id === id ? updated : t)) };
+  return replaceTask(board, { ...task, ...accepted, updatedAt: now.toISOString() });
 }
 
 /** Removes a Task for good; the Tasks below it in its Column move up. */
 function deleteTask(board: Board, { id }: DeleteTask): Board {
-  const task = board.tasks.find((t) => t.id === id);
+  const task = findTask(board, id);
   if (!task) return board;
   return {
     ...board,
@@ -394,23 +422,21 @@ function deleteTask(board: Board, { id }: DeleteTask): Board {
 
 /** Attaches a Label by name to a Task, creating the Label when the name is new. */
 function attachLabel(board: Board, { taskId, name, newLabelId }: AttachLabel, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === taskId);
+  const task = findTask(board, taskId);
   const trimmed = name.trim();
   if (!task || trimmed === '') return board;
   const existing = findLabelByName(board, trimmed);
   if (existing && task.labelIds.includes(existing.id)) return board;
   const label: Label = existing ?? { id: newLabelId, name: trimmed, color: nextLabelColor(board) };
   const labels = existing ? board.labels : [...board.labels, label];
-  const updated: Task = { ...task, labelIds: [...task.labelIds, label.id], updatedAt: now.toISOString() };
-  return { labels, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
+  return replaceTask({ ...board, labels }, { ...task, labelIds: [...task.labelIds, label.id], updatedAt: now.toISOString() });
 }
 
 /** Removes a Label from one Task; the Label itself stays on the Board for reuse. */
 function detachLabel(board: Board, { taskId, labelId }: DetachLabel, now: Date): Board {
-  const task = board.tasks.find((t) => t.id === taskId);
+  const task = findTask(board, taskId);
   if (!task || !task.labelIds.includes(labelId)) return board;
-  const updated: Task = { ...task, labelIds: task.labelIds.filter((id) => id !== labelId), updatedAt: now.toISOString() };
-  return { ...board, tasks: board.tasks.map((t) => (t.id === taskId ? updated : t)) };
+  return replaceTask(board, { ...task, labelIds: task.labelIds.filter((id) => id !== labelId), updatedAt: now.toISOString() });
 }
 
 /**
@@ -418,17 +444,17 @@ function detachLabel(board: Board, { taskId, labelId }: DetachLabel, now: Date):
  * A name `labelRenameError` rejects leaves the Board unchanged.
  */
 function renameLabel(board: Board, { labelId, name }: RenameLabel): Board {
-  const label = board.labels.find((l) => l.id === labelId);
+  const label = findLabel(board, labelId);
   const trimmed = name.trim();
   if (!label || label.name === trimmed || labelRenameError(board, labelId, name) !== null) return board;
-  return { ...board, labels: board.labels.map((l) => (l === label ? { ...l, name: trimmed } : l)) };
+  return replaceLabel(board, { ...label, name: trimmed });
 }
 
 /** Changes a Label's color. Tasks refer to Labels by id, so they all show it. */
 function recolorLabel(board: Board, { labelId, color }: RecolorLabel): Board {
-  const label = board.labels.find((l) => l.id === labelId);
+  const label = findLabel(board, labelId);
   if (!label || label.color === color) return board;
-  return { ...board, labels: board.labels.map((l) => (l === label ? { ...l, color } : l)) };
+  return replaceLabel(board, { ...label, color });
 }
 
 /**
@@ -436,7 +462,7 @@ function recolorLabel(board: Board, { labelId, color }: RecolorLabel): Board {
  * Updated at, so no Task is left pointing at a Label that is not on the Board.
  */
 function deleteLabel(board: Board, { labelId }: DeleteLabel, now: Date): Board {
-  if (!board.labels.some((label) => label.id === labelId)) return board;
+  if (!findLabel(board, labelId)) return board;
   const labels = board.labels.filter((label) => label.id !== labelId);
   if (labelUsageCount(board, labelId) === 0) return { ...board, labels };
   const timestamp = now.toISOString();
@@ -464,7 +490,7 @@ export function labelRenameError(board: Pick<Board, 'labels'>, labelId: string, 
 /** The palette color the fewest Labels use; the earliest in the palette on a tie. */
 function nextLabelColor(board: Board): string {
   const uses = (color: string) => board.labels.filter((label) => label.color === color).length;
-  return LABEL_COLORS.reduce((best, color) => (uses(color) < uses(best) ? color : best));
+  return LABEL_PALETTE.reduce((best, color) => (uses(color.hex) < uses(best.hex) ? color : best)).hex;
 }
 
 /** The Label with the given name, ignoring case, if the Board has one. */
@@ -473,9 +499,27 @@ function findLabelByName(board: Pick<Board, 'labels'>, name: string): Label | un
   return board.labels.find((label) => label.name.toLowerCase() === key);
 }
 
+function findTask(board: Board, id: string): Task | undefined {
+  return board.tasks.find((task) => task.id === id);
+}
+
+function findLabel(board: Pick<Board, 'labels'>, id: string): Label | undefined {
+  return board.labels.find((label) => label.id === id);
+}
+
+/** The Board with the Task of the same id swapped for `updated`. */
+function replaceTask(board: Board, updated: Task): Board {
+  return { ...board, tasks: board.tasks.map((task) => (task.id === updated.id ? updated : task)) };
+}
+
+/** The Board with the Label of the same id swapped for `updated`. */
+function replaceLabel(board: Board, updated: Label): Board {
+  return { ...board, labels: board.labels.map((label) => (label.id === updated.id ? updated : label)) };
+}
+
 /** The Labels a Task carries, in the order they were attached. */
 export function labelsOf(board: Pick<Board, 'labels'>, task: Task): Label[] {
-  return task.labelIds.flatMap((id) => board.labels.find((label) => label.id === id) ?? []);
+  return task.labelIds.flatMap((id) => findLabel(board, id) ?? []);
 }
 
 /** How many Tasks on the Board carry the Label. */
@@ -492,7 +536,17 @@ export function localDate(date: Date): LocalDate {
 /** Whether the Task is Overdue on the local date `today`. */
 export function isOverdue(task: Task, today: LocalDate): boolean {
   // `YYYY-MM-DD` strings sort in calendar order, so a string compare is enough.
-  return task.status !== 'done' && task.dueDate !== null && task.dueDate < today;
+  return !isDone(task.status) && task.dueDate !== null && task.dueDate < today;
+}
+
+/** Whether a Status is Done, the one that records Completed at and is never Overdue. */
+export function isDone(status: StatusId): boolean {
+  return status === 'done';
+}
+
+/** Whether the Task has a Priority other than None. */
+export function hasPriority(task: Task): boolean {
+  return task.priority !== 'none';
 }
 
 /** The Tasks with the given Status, in Column order (top first). */

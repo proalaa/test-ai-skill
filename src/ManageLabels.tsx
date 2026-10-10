@@ -1,21 +1,9 @@
 import { useId, useRef, useState, type FormEvent } from 'react';
-import { LABEL_COLORS, labelRenameError, labelUsageCount, type Board, type Label } from './board/board';
+import { LABEL_PALETTE, labelRenameError, labelUsageCount, type Board, type Label } from './board/board';
 import { ConfirmDialog } from './ConfirmDialog';
 import { LabelChip } from './LabelChip';
 import { Modal } from './Modal';
 import type { Dispatch } from './useBoard';
-
-/** What the palette colors are called, for screen readers and tooltips. */
-const COLOR_NAMES: Record<string, string> = {
-  '#0c66e4': 'Blue',
-  '#1f845a': 'Green',
-  '#b65c02': 'Orange',
-  '#6e5dc6': 'Purple',
-  '#c9372c': 'Red',
-  '#227d9b': 'Teal',
-  '#ae4787': 'Magenta',
-  '#626f86': 'Gray',
-};
 
 interface ManageLabelsProps {
   board: Board;
@@ -51,14 +39,14 @@ export function ManageLabels({ board, dispatch, onClose }: ManageLabelsProps) {
       ) : (
         <ul className="label-rows">
           {board.labels.map((label) => (
-            <LabelRow key={label.id} label={label} usage={labelUsageCount(board, label.id)} board={board} dispatch={dispatch} onDelete={() => setDeleting(label)} />
+            <LabelRow key={label.id} label={label} usageCount={labelUsageCount(board, label.id)} board={board} dispatch={dispatch} onDelete={() => setDeleting(label)} />
           ))}
         </ul>
       )}
       {deleting && (
         <DeleteLabelConfirmation
           label={deleting}
-          usage={labelUsageCount(board, deleting.id)}
+          usageCount={labelUsageCount(board, deleting.id)}
           onConfirm={() => confirmDelete(deleting)}
           onCancel={() => setDeleting(null)}
         />
@@ -70,7 +58,7 @@ export function ManageLabels({ board, dispatch, onClose }: ManageLabelsProps) {
 interface LabelRowProps {
   label: Label;
   /** How many Tasks carry the Label. */
-  usage: number;
+  usageCount: number;
   /** The whole Board, to check a new name against the other Labels. */
   board: Board;
   dispatch: Dispatch;
@@ -79,7 +67,7 @@ interface LabelRowProps {
 }
 
 /** One Label on the Manage labels screen. The name is renamed on Enter or when the field loses focus. */
-function LabelRow({ label, usage, board, dispatch, onDelete }: LabelRowProps) {
+function LabelRow({ label, usageCount, board, dispatch, onDelete }: LabelRowProps) {
   const id = useId();
   // The name as typed; it only reaches the Board when the rename is allowed.
   const [name, setName] = useState(label.name);
@@ -116,21 +104,21 @@ function LabelRow({ label, usage, board, dispatch, onDelete }: LabelRowProps) {
         </p>
       )}
       <div className="label-colors" role="radiogroup" aria-label="Color">
-        {LABEL_COLORS.map((color) => (
+        {LABEL_PALETTE.map((color) => (
           <input
-            key={color}
+            key={color.hex}
             type="radio"
             className="label-color"
             name={`${id}-color`}
-            aria-label={COLOR_NAMES[color]}
-            title={COLOR_NAMES[color]}
-            style={{ backgroundColor: color }}
-            checked={label.color === color}
-            onChange={() => dispatch({ type: 'recolorLabel', labelId: label.id, color })}
+            aria-label={color.name}
+            title={color.name}
+            style={{ backgroundColor: color.hex }}
+            checked={label.color === color.hex}
+            onChange={() => dispatch({ type: 'recolorLabel', labelId: label.id, color: color.hex })}
           />
         ))}
       </div>
-      <span className="label-usage">{usageText(usage)}</span>
+      <span className="label-usage">{usageText(usageCount)}</span>
       <button type="button" className="button" onClick={onDelete}>
         Delete
       </button>
@@ -140,17 +128,17 @@ function LabelRow({ label, usage, board, dispatch, onDelete }: LabelRowProps) {
 
 interface DeleteLabelConfirmationProps {
   label: Label;
-  usage: number;
+  usageCount: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /** "Remove from N tasks?" for a Label in use; a simple confirmation for an unused one. */
-function DeleteLabelConfirmation({ label, usage, onConfirm, onCancel }: DeleteLabelConfirmationProps) {
-  const used = usage > 0;
+function DeleteLabelConfirmation({ label, usageCount, onConfirm, onCancel }: DeleteLabelConfirmationProps) {
+  const used = usageCount > 0;
   return (
     <ConfirmDialog
-      title={used ? `Remove from ${tasksText(usage)}?` : `Delete the Label “${label.name}”?`}
+      title={used ? `Remove from ${tasksText(usageCount)}?` : `Delete the Label “${label.name}”?`}
       confirmLabel="Delete label"
       onConfirm={onConfirm}
       onCancel={onCancel}
@@ -164,9 +152,9 @@ function DeleteLabelConfirmation({ label, usage, onConfirm, onCancel }: DeleteLa
   );
 }
 
-function usageText(usage: number) {
-  if (usage === 0) return 'Not used';
-  return `Used by ${tasksText(usage)}`;
+function usageText(usageCount: number) {
+  if (usageCount === 0) return 'Not used';
+  return `Used by ${tasksText(usageCount)}`;
 }
 
 /** "1 task", "2 tasks". */

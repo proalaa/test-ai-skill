@@ -21,6 +21,20 @@ test('first launch shows an empty Board with three Columns and the hint', async 
   await expect(page.getByRole('listitem')).toHaveCount(0);
 });
 
+test('saved data that can’t be read is reported and kept aside, not overwritten', async ({ page }) => {
+  const unreadable = '{"version": 1, "board": ';
+  await page.evaluate((text) => window.localStorage.setItem('task-board', text), unreadable);
+  await page.reload();
+
+  await expect(page.getByRole('alert')).toContainText(/saved board couldn’t be read/i);
+  const input = page.getByRole('region', { name: 'To Do' }).getByRole('textbox', { name: /add task/i });
+  await input.fill('Fresh start');
+  await input.press('Enter');
+  await expect(page.getByRole('listitem')).toHaveCount(1);
+
+  expect(await page.evaluate(() => window.localStorage.getItem('task-board-unreadable'))).toBe(unreadable);
+});
+
 test('the theme follows the color-scheme preference', async ({ page }) => {
   const background = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 

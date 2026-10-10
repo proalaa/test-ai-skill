@@ -1,44 +1,37 @@
-import { isOverdue, labelsOf, type Label, type LocalDate, type Priority, type Task } from './board/board';
+import { hasPriority, isOverdue, priorityName, type Label, type LocalDate, type Task } from './board/board';
 import { LabelChips } from './LabelChip';
 
-const PRIORITY_NAMES: Record<Exclude<Priority, 'none'>, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
-
-export interface TaskCardProps {
+export interface TaskSummaryProps {
   task: Task;
   /** The user's local date, from the injected clock. Decides Overdue. */
   today: LocalDate;
-  /** Every Label on the Board; the Task's own are shown as chips. */
+  /** The Labels the Task carries, shown as chips in this order. */
   labels: Label[];
 }
 
 /**
- * What a Task shows inside its Column item: the title, a row of details, then
+ * What a Task shows in its Column: the title, a row of details, then
  * its Label chips. Timestamps are deliberately left out; they live in the Task modal.
  */
-export function TaskCard({ task, today, labels }: TaskCardProps) {
+export function TaskSummary({ task, today, labels }: TaskSummaryProps) {
   const hasDescription = task.description.trim() !== '';
-  const hasDetails = task.priority !== 'none' || task.dueDate !== null || hasDescription;
+  const hasDetails = hasPriority(task) || task.dueDate !== null || hasDescription;
   return (
     <>
-      <span className="task-title">{task.title}</span>
+      <h3 className="task-title">{task.title}</h3>
       {hasDetails && (
         <span className="task-details">
-          {task.priority !== 'none' && (
+          {hasPriority(task) && (
             <span className={`priority-badge priority-${task.priority}`}>
               <span className="visually-hidden">Priority: </span>
-              {PRIORITY_NAMES[task.priority]}
+              {priorityName(task.priority)}
             </span>
           )}
           {task.dueDate && <DueDate dueDate={task.dueDate} overdue={isOverdue(task, today)} today={today} />}
           {hasDescription && <DescriptionIcon />}
         </span>
       )}
-      <LabelChips labels={labelsOf({ labels }, task)} />
+      <LabelChips labels={labels} />
     </>
   );
 }

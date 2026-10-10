@@ -15,7 +15,7 @@ export function LabelChip({ label, children }: { label: Label; children?: ReactN
 export function LabelChips({ labels }: { labels: Label[] }) {
   if (labels.length === 0) return null;
   return (
-    <div className="label-chips">
+    <div className="label-chips" role="group" aria-label="Labels">
       {labels.map((label) => (
         <LabelChip key={label.id} label={label} />
       ))}

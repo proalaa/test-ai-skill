@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -24,8 +24,9 @@ interface ModalProps {
 /**
  * A modal dialog over a backdrop. It moves focus inside when it opens, keeps
  * Tab and Shift+Tab inside, closes on Escape, and gives focus back to whatever
- * had it before when it goes away. Modals can be nested: the innermost one
- * handles Escape and Tab and stops them reaching the outer one.
+ * had it before when it goes away. Escape and Tab work even when focus has
+ * somehow left the dialog. Modals can be nested (the inner one inside the
+ * outer one's content): only the innermost one handles Escape and Tab.
  */
 export function Modal({
   label,
@@ -50,30 +51,28 @@ export function Modal({
     // Only on open and close.
   }, []);
 
-  function onKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      event.preventDefault();
-      onClose();
-    } else if (event.key === 'Tab') {
-      event.stopPropagation();
-      const focusable = focusableIn(dialogRef.current!);
-      if (focusable.length === 0) {
+  // Keys are handled at the document, not on the dialog, so Escape and Tab
+  // still work when focus has left the dialog (e.g. its element was removed).
+  const latestOnClose = useRef(onClose);
+  latestOnClose.current = onClose;
+  useEffect(() => {
+    const dialog = dialogRef.current!;
+    openDialogs.add(dialog);
+    function onKeyDown(event: KeyboardEvent) {
+      if (!isInnermost(dialog)) return;
+      if (event.key === 'Escape') {
         event.preventDefault();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      const active = document.activeElement;
-      if (event.shiftKey && (active === first || !dialogRef.current!.contains(active))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (active === last || !dialogRef.current!.contains(active))) {
-        event.preventDefault();
-        first.focus();
+        latestOnClose.current();
+      } else if (event.key === 'Tab') {
+        trapTab(dialog, event);
       }
     }
-  }
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      openDialogs.delete(dialog);
+    };
+  }, []);
 
   return (
     <div className={backdropClassName}>
@@ -86,7 +85,6 @@ export function Modal({
         aria-labelledby={labelledBy}
         aria-describedby={describedBy}
         tabIndex={-1}
-        onKeyDown={onKeyDown}
       >
         {children}
       </div>
@@ -96,4 +94,33 @@ export function Modal({
 
 function focusableIn(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE));
+}
+
+/** Every open dialog element, for finding the innermost one. */
+const openDialogs = new Set<HTMLElement>();
+
+/** Whether no other open dialog sits inside `dialog`. */
+function isInnermost(dialog: HTMLElement): boolean {
+  return ![...openDialogs].some((other) => other !== dialog && dialog.contains(other));
+}
+
+/** Moves focus round to the other end of the dialog at either end, or into it when it is outside. */
+function trapTab(dialog: HTMLElement, event: KeyboardEvent): void {
+  const focusable = focusableIn(dialog);
+  if (focusable.length === 0) {
+    event.preventDefault();
+    dialog.focus();
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  const active = document.activeElement;
+  const outside = !dialog.contains(active);
+  if (event.shiftKey && (active === first || outside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (active === last || outside)) {
+    event.preventDefault();
+    first.focus();
+  }
 }

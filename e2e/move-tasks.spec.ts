@@ -1,14 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { column } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
 });
-
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
 
 function tasks(page: Page, columnName: string) {
   return column(page, columnName).getByRole('listitem');

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { addTask, column, openTask, taskModal } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -6,29 +7,8 @@ test.beforeEach(async ({ page }) => {
   await page.reload();
 });
 
-function column(page: Page, name: string) {
-  return page.getByRole('region', { name });
-}
-
-function modal(page: Page) {
-  return page.getByRole('dialog', { name: /task details/i });
-}
-
-async function addTask(page: Page, columnName: string, title: string) {
-  const input = column(page, columnName).getByRole('textbox', { name: /add task/i });
-  await input.fill(title);
-  await input.press('Enter');
-  await expect(input).toHaveValue('');
-}
-
-async function openTask(page: Page, title: string) {
-  await page.getByRole('listitem').filter({ hasText: title }).first().click();
-  await expect(modal(page)).toBeVisible();
-  return modal(page);
-}
-
 async function attachLabel(page: Page, name: string) {
-  const input = modal(page).getByLabel('Add label');
+  const input = taskModal(page).getByLabel('Add label');
   await input.fill(name);
   await input.press('Enter');
   await expect(input).toHaveValue('');
@@ -45,7 +25,7 @@ test('Labels attach by name, reuse ignoring case, show as chips and survive a re
 
   await openTask(page, 'Fix logout');
   await attachLabel(page, 'bug');
-  await modal(page).getByRole('button', { name: /close/i }).click();
+  await taskModal(page).getByRole('button', { name: /close/i }).click();
 
   const login = column(page, 'To Do').getByRole('listitem').filter({ hasText: 'Fix login' });
   const logout = column(page, 'To Do').getByRole('listitem').filter({ hasText: 'Fix logout' });
@@ -60,10 +40,26 @@ test('Labels attach by name, reuse ignoring case, show as chips and survive a re
 
   // Removing a Label from its last Task keeps it on the Board for reuse.
   await openTask(page, 'Fix login');
-  await modal(page).getByRole('button', { name: /remove label ui/i }).click();
+  await taskModal(page).getByRole('button', { name: /remove label ui/i }).click();
   await expect(login.getByText('UI', { exact: true })).toHaveCount(0);
   await attachLabel(page, 'ui');
   await expect(login.getByText('UI', { exact: true })).toHaveCSS('background-color', 'rgb(31, 132, 90)');
   const labels = await page.evaluate(() => JSON.parse(window.localStorage.getItem('task-board') ?? '{}').board.labels);
   expect(labels.map((label: { name: string }) => label.name)).toEqual(['Bug', 'UI']);
+});
+
+test('removing a Label chip keeps focus in the task modal, so Tab and Escape still work', async ({ page }) => {
+  await addTask(page, 'To Do', 'Fix login');
+  await openTask(page, 'Fix login');
+  await attachLabel(page, 'Bug');
+
+  await taskModal(page).getByRole('button', { name: /remove label bug/i }).click();
+
+  await expect(taskModal(page).getByLabel('Add label')).toBeFocused();
+  for (let i = 0; i < 10; i++) {
+    await page.keyboard.press('Tab');
+    expect(await taskModal(page).evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);
+  }
+  await page.keyboard.press('Escape');
+  await expect(taskModal(page)).toHaveCount(0);
 });
