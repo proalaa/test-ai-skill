@@ -165,7 +165,10 @@ function readTask(data: unknown, name: string): Task {
   };
 }
 
-/** Checks the rules that span the Board: unique ids, unique Label names, no missing Labels. */
+/**
+ * Checks the rules that span the Board: unique ids, unique Label names, no
+ * missing Labels, and positions 0..n-1 in each Column.
+ */
 function checkConsistency({ tasks, labels }: Board): void {
   const labelIds = new Set<string>();
   const labelNames = new Set<string>();
@@ -183,6 +186,12 @@ function checkConsistency({ tasks, labels }: Board): void {
     const missing = task.labelIds.find((id) => !labelIds.has(id));
     if (missing !== undefined) {
       throw new InvalidData(`Task “${task.title}” carries a Label that is not on the Board (“${missing}”).`);
+    }
+  }
+  for (const status of STATUSES) {
+    const positions = tasksIn({ tasks, labels }, status.id).map((task) => task.position);
+    if (positions.some((position, index) => position !== index)) {
+      throw new InvalidData(`The Task positions in ${status.name} are not 0 to ${positions.length - 1} without repeats or gaps.`);
     }
   }
 }
