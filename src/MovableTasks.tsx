@@ -194,20 +194,20 @@ export function useColumnDropTarget(status: StatusId) {
   return useDroppable({ id: columnDroppableId(status) }).setNodeRef;
 }
 
-interface MovableTaskListProps {
+interface MovableColumnTasksProps {
   status: StatusId;
   tasks: Task[];
   /** Opens a Task (on click, or Enter while it has focus). */
   onOpenTask: (id: string) => void;
-  /** What each Task shows inside its list item. */
+  /** What each Task shows in the Column. */
   renderTask: (task: Task) => ReactNode;
 }
 
-/** The Tasks of one Column as a list whose items can be dragged. */
-export function MovableTaskList({ status, tasks, onOpenTask, renderTask }: MovableTaskListProps) {
+/** The Tasks of one Column, each of which can be dragged. */
+export function MovableColumnTasks({ status, tasks, onOpenTask, renderTask }: MovableColumnTasksProps) {
   return (
     <SortableContext id={columnDroppableId(status)} items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-      <ul className="task-list">
+      <ul className="column-tasks">
         {tasks.map((task) => (
           <MovableTask key={task.id} task={task} onOpen={() => onOpenTask(task.id)}>
             {renderTask(task)}

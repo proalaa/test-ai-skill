@@ -51,14 +51,14 @@ export function ManageLabels({ board, dispatch, onClose }: ManageLabelsProps) {
       ) : (
         <ul className="label-rows">
           {board.labels.map((label) => (
-            <LabelRow key={label.id} label={label} usage={labelUsageCount(board, label.id)} board={board} dispatch={dispatch} onDelete={() => setDeleting(label)} />
+            <LabelRow key={label.id} label={label} usageCount={labelUsageCount(board, label.id)} board={board} dispatch={dispatch} onDelete={() => setDeleting(label)} />
           ))}
         </ul>
       )}
       {deleting && (
         <DeleteLabelConfirmation
           label={deleting}
-          usage={labelUsageCount(board, deleting.id)}
+          usageCount={labelUsageCount(board, deleting.id)}
           onConfirm={() => confirmDelete(deleting)}
           onCancel={() => setDeleting(null)}
         />
@@ -70,7 +70,7 @@ export function ManageLabels({ board, dispatch, onClose }: ManageLabelsProps) {
 interface LabelRowProps {
   label: Label;
   /** How many Tasks carry the Label. */
-  usage: number;
+  usageCount: number;
   /** The whole Board, to check a new name against the other Labels. */
   board: Board;
   dispatch: Dispatch;
@@ -79,7 +79,7 @@ interface LabelRowProps {
 }
 
 /** One Label on the Manage labels screen. The name is renamed on Enter or when the field loses focus. */
-function LabelRow({ label, usage, board, dispatch, onDelete }: LabelRowProps) {
+function LabelRow({ label, usageCount, board, dispatch, onDelete }: LabelRowProps) {
   const id = useId();
   // The name as typed; it only reaches the Board when the rename is allowed.
   const [name, setName] = useState(label.name);
@@ -130,7 +130,7 @@ function LabelRow({ label, usage, board, dispatch, onDelete }: LabelRowProps) {
           />
         ))}
       </div>
-      <span className="label-usage">{usageText(usage)}</span>
+      <span className="label-usage">{usageText(usageCount)}</span>
       <button type="button" className="button" onClick={onDelete}>
         Delete
       </button>
@@ -140,17 +140,17 @@ function LabelRow({ label, usage, board, dispatch, onDelete }: LabelRowProps) {
 
 interface DeleteLabelConfirmationProps {
   label: Label;
-  usage: number;
+  usageCount: number;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
 /** "Remove from N tasks?" for a Label in use; a simple confirmation for an unused one. */
-function DeleteLabelConfirmation({ label, usage, onConfirm, onCancel }: DeleteLabelConfirmationProps) {
-  const used = usage > 0;
+function DeleteLabelConfirmation({ label, usageCount, onConfirm, onCancel }: DeleteLabelConfirmationProps) {
+  const used = usageCount > 0;
   return (
     <ConfirmDialog
-      title={used ? `Remove from ${tasksText(usage)}?` : `Delete the Label “${label.name}”?`}
+      title={used ? `Remove from ${tasksText(usageCount)}?` : `Delete the Label “${label.name}”?`}
       confirmLabel="Delete label"
       onConfirm={onConfirm}
       onCancel={onCancel}
@@ -164,9 +164,9 @@ function DeleteLabelConfirmation({ label, usage, onConfirm, onCancel }: DeleteLa
   );
 }
 
-function usageText(usage: number) {
-  if (usage === 0) return 'Not used';
-  return `Used by ${tasksText(usage)}`;
+function usageText(usageCount: number) {
+  if (usageCount === 0) return 'Not used';
+  return `Used by ${tasksText(usageCount)}`;
 }
 
 /** "1 task", "2 tasks". */

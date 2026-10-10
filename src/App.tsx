@@ -3,9 +3,9 @@ import { STATUSES, localDate, type Label, type LocalDate, type Status, type Task
 import { BoardTransfer } from './BoardTransfer';
 import { ManageLabels } from './ManageLabels';
 import type { Clock } from './clock';
-import { MovableTaskList, MovableTasks, useColumnDropTarget } from './MovableTasks';
+import { MovableColumnTasks, MovableTasks, useColumnDropTarget } from './MovableTasks';
 import type { BoardStorage } from './storage/boardStorage';
-import { TaskCard } from './TaskCard';
+import { TaskSummary } from './TaskSummary';
 import { TaskModal } from './TaskModal';
 import { useBoard, type Dispatch } from './useBoard';
 import './App.css';
@@ -98,11 +98,11 @@ function Column({ status, tasks, dispatch, showHint, onOpenTask, today, labels }
         </span>
       </header>
       {showHint && <p className="empty-hint">No tasks yet. Type a title in “+ Add task” below and press Enter.</p>}
-      <MovableTaskList
+      <MovableColumnTasks
         status={status.id}
         tasks={tasks}
         onOpenTask={onOpenTask}
-        renderTask={(task) => <TaskCard task={task} today={today} labels={labels} />}
+        renderTask={(task) => <TaskSummary task={task} today={today} labels={labels} />}
       />
       <QuickAdd onAdd={(title) => dispatch({ type: 'addTask', id: crypto.randomUUID(), status: status.id, title })} />
     </section>

@@ -8,7 +8,7 @@ const PRIORITY_NAMES: Record<Exclude<Priority, 'none'>, string> = {
   urgent: 'Urgent',
 };
 
-export interface TaskCardProps {
+export interface TaskSummaryProps {
   task: Task;
   /** The user's local date, from the injected clock. Decides Overdue. */
   today: LocalDate;
@@ -17,10 +17,10 @@ export interface TaskCardProps {
 }
 
 /**
- * What a Task shows inside its Column item: the title, a row of details, then
+ * What a Task shows in its Column: the title, a row of details, then
  * its Label chips. Timestamps are deliberately left out; they live in the Task modal.
  */
-export function TaskCard({ task, today, labels }: TaskCardProps) {
+export function TaskSummary({ task, today, labels }: TaskSummaryProps) {
   const hasDescription = task.description.trim() !== '';
   const hasDetails = task.priority !== 'none' || task.dueDate !== null || hasDescription;
   return (
